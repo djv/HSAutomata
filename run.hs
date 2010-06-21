@@ -10,4 +10,4 @@ main = do
     inpStr <- B.readFile "test"
     let inp = B.lines inpStr :: [B.ByteString]
     testSize <- liftM (read . (!!0)) $ getArgs :: IO Int
-    putStrLn $ show $ size $ DFA.states $ buildDictionary $ take testSize inp
+    putStrLn $ show $ stateSize $ buildDictionary $ take testSize inp
