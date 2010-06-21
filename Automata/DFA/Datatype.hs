@@ -19,8 +19,10 @@ module Automata.DFA.Datatype (
 import Control.Monad
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.List as List
+import qualified Data.List as List
 import Debug.Trace
+import Prelude hiding (drop, length, init, tail, scanl, reverse, last, map, null, zip)
+import Data.ByteString.Char8
 
 import Maybe
 
@@ -60,7 +62,7 @@ states (MapDFA m s _)= Set.unions [keyStates, valueStates, Set.singleton s]
 compatibleWRT dfa refDFA = mapStateLabels (+ (1 + Set.findMax (states refDFA))) dfa
 
 numberDFA dfa 
-    = let setsToLabels = Map.fromList $ zip (Set.elems (states dfa)) [1..]
+    = let setsToLabels = Map.fromList $ List.zip (Set.elems (states dfa)) [1..]
           number = (setsToLabels Map.!)
       in  mapStateLabels number dfa
 
@@ -101,47 +103,68 @@ compose (DTransducer ttrans tstart) dfa =
           , accepting = \(_,s) -> accepting dfa s
           }
 
-commonPrefix [] _ = []
-commonPrefix _ [] = []
-commonPrefix (x:xs) (y:ys) = if x==y then x:commonPrefix xs ys else []
+commonPrefix xs ys | null xs || null ys = empty
+                   | otherwise = let (x, xs') = fromJust $ uncons xs
+                                     (y, ys') = fromJust $ uncons ys in
+                                        if x==y then cons x (commonPrefix xs' ys') else empty
 
 fst3 (x,_,_,_) = x
 
 trans t n e = (n,e) `Map.lookup` t
-transAll t s = map (trans t s) ['a'..'c']
+transAll t s = List.map (trans t s) ['a'..'c']
 
-buildDictionary :: [String] -> MapDFA StateLabel Char
-buildDictionary l = fst3 $ foldl' step (MapDFA Map.empty 0 Set.empty, "", 1, 0) l where
-    step :: (MapDFA StateLabel Char, String, Int, Int) -> String -> (MapDFA StateLabel Char, String, Int, Int)
+checkEquiv :: MapDFA StateLabel Char -> StateLabel -> StateLabel -> Bool
+checkEquiv dfa s1 s2 = (transAll (transitionMap dfa) s1 == transAll (transitionMap dfa) s2) &&
+    (s1 `Set.member` acceptKeys dfa == s2 `Set.member` acceptKeys dfa)
+
+transStar :: MapDFA StateLabel Char -> ByteString -> StateLabel
+transStar dfa pref = foldl' (\n e -> fromJust $ trans (transitionMap dfa) n e) (startKey dfa) pref
+
+--list of states in dfa starting from state by traversing str
+statesOnPath dfa state str = scanl (\n e -> fromJust $ trans (transitionMap dfa) n e) state str
+
+predecessors dfa state = Map.filter (==state) $ transitionMap dfa
+
+findEquiv dfa state goingTo = fmap (fst . fst) $ listToMaybe $ Map.toList $ Map.filterWithKey (\k a -> checkEquiv dfa state (fst k)) $ predecessors dfa goingTo
+
+buildDictionary :: [ByteString] -> MapDFA StateLabel Char
+buildDictionary l = fst3 $ List.foldl' step (MapDFA Map.empty 0 Set.empty, empty, 1, 0) l where
+    step :: (MapDFA StateLabel Char, ByteString, Int, Int) -> ByteString -> (MapDFA StateLabel Char, ByteString, Int, Int)
     step (dfa, lastWord, newIndex, final) newWord
         | lastWord == newWord = (dfa, lastWord, newIndex, final)
-        | otherwise = {-# SCC "step" #-} (minimized {transitionMap = insertNewStates, acceptKeys = Set.insert (last newStates) (acceptKeys dfa)}, newWord, newIndex + length newSuffix, newFinal) where
-        minimized = {-# SCC "minimized" #-} fst $ foldl' walkBack (dfa, Just final) $ reverse $ candidatesTransitions
-        candidatesTransitions = zip3 (init candidates) lastSuffix (tail candidates)
+        | otherwise = (MapDFA insertNewStates 0 insertNewFinal, newWord, newIndex + length newSuffix, newFinal) where
+
+        minimized = fst $ List.foldl' walkBack (dfa, Just final) $ List.reverse $ candidatesTransitions
+
+        --transitions on the lastSuffix path
+        candidatesTransitions = List.zip3 (List.init candidates) (unpack lastSuffix) (List.tail candidates)
+
+        --new state labels for the newSuffix path
         newStates = [newIndex .. newIndex + length newSuffix - 1]
-        insertNewStates = {-# SCC "insertNewStates" #-} foldl' (\dfa (s1, x, s2) -> Map.insert (s1,x) s2 dfa) (transitionMap minimized) $ zip3 (branchPoint:init newStates) newSuffix newStates
-        newFinal = if List.null lastSuffix then newIndex + length newSuffix - 1 else final
+        
+        --insert newStates in minimized
+        insertNewStates = List.foldl' (\dfa (s1, x, s2) -> Map.insert (s1,x) s2 dfa) (transitionMap minimized) $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates
+        --mark last of newStates as final
+        insertNewFinal = Set.insert (List.last newStates) (acceptKeys minimized)
+
+        --change final if it is on the new path
+        newFinal = if null lastSuffix then newIndex + length newSuffix - 1 else final
 
         pref = commonPrefix lastWord newWord
+        lastSuffix = drop (length pref) lastWord
+        newSuffix = drop (length pref) newWord
 
-        branchPoint :: StateLabel
-        branchPoint = {-# SCC "branchPoint" #-} foldl' (\n e -> fromJust $ trans (transitionMap dfa) n e) (startKey dfa) pref
+        branchPoint = transStar dfa pref
 
-        lastSuffix = fromJust $ stripPrefix pref lastWord
-        newSuffix = fromJust $ stripPrefix pref newWord
-
-        candidates :: [StateLabel]
-        candidates = {-# SCC "candidates" #-} scanl (\n e -> fromJust $ trans (transitionMap dfa) n e) branchPoint lastSuffix
-
-        checkEquiv :: Map.Map (StateLabel, Char) StateLabel -> StateLabel -> StateLabel -> Bool
-        checkEquiv t s1 s2 = {-# SCC "checkEquiv" #-} (transAll t s1 == transAll t s2) &&
-            (s1 `Set.member` acceptKeys dfa == s2 `Set.member` acceptKeys dfa) 
+        --states on the path on lastSuffix which could be minimized
+        candidates = statesOnPath dfa branchPoint lastSuffix
 
         walkBack :: (MapDFA StateLabel Char, Maybe StateLabel) -> (StateLabel, Char, StateLabel) -> (MapDFA StateLabel Char, Maybe StateLabel)
         walkBack (dfa, Nothing) _ = (dfa, Nothing)
         walkBack (dfa@(MapDFA t s a), Just cur_st) (s1, x, s2)
             | cur_st == s2 = (dfa, Nothing)
-            | otherwise = {-# SCC "walkBack" #-} (dfa {transitionMap = redirectTransition, acceptKeys = traceShow (s2,a) $ Set.delete s2 a}, newCur) where
+            | otherwise = (newDfa, newCur) where
+            newDfa = dfa {transitionMap = redirectTransition, acceptKeys = Set.delete s2 a}
             redirectTransition = Map.insert (s1,x) cur_st $ deleteState s2 t
-            newCur = {-# SCC "newCur" #-} fmap (fst . fst) $ listToMaybe $ Map.toList $ Map.filterWithKey (\k a -> checkEquiv redirectTransition s1 (fst k)) $ {-# SCC "filter_isTo" #-} Map.filterWithKey (isTo cur_st) t
-            deleteState state trans = {-# SCC "deleteState" #-} foldl' (\t c -> Map.delete (state,c) t) trans ['a'..'c']
+            newCur = findEquiv newDfa cur_st s1
+            deleteState state trans = List.foldl' (\t c -> Map.delete (state,c) t) trans ['a'..'c']

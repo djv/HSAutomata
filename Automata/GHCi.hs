@@ -19,16 +19,17 @@ import Automata.Utils
 import Test.QuickCheck.Gen
 import Test.QuickCheck
 import Data.List
-import Data.Set
+import qualified Data.Set as Set
 import Debug.Trace
 import Control.Arrow
+import qualified Data.ByteString.Char8 as B
 
 -- @regexOnscreen@ should be pronounced as if Captain Picard were saying it.
 regexOnscreenN = previewDot . NGraphviz.toGraphviz . NFA.removeUnreachableStates . regularExpressionToNFA . eParse
 regexOnscreenD = previewDot . DGraphviz.toGraphviz . minimize . mapNFAToMapDFA . regularExpressionToNFA . eParse
 
-nfaOnscreen = previewDot . NGraphviz.toGraphviz . NFA.removeUnreachableStates
-dfaOnscreen = previewDot . DGraphviz.toGraphviz
+nfaOnscreen x = previewDot . NGraphviz.toGraphviz . NFA.removeUnreachableStates $ x
+dfaOnscreen x = previewDot . DGraphviz.toGraphviz $ x
 
 type Widget = String
 type Link = String
@@ -66,17 +67,17 @@ genInpList = listOf1 $ listOf1 $ choose ('a', 'c')
 
 prop_accepts = do
     inp <- genInpList
-    let dict = buildDictionary $ sort inp
+    let dict = buildDictionary $ map B.pack $ sort inp
     return $ all (DMatcher.matches (mapDFAToDFA dict)) inp
 
 prop_notAccepts = do
     inp <- genInpList
-    let dict = buildDictionary $ sort inp
+    let dict = buildDictionary $ map B.pack $ sort inp
     notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
     return $ not $ Data.List.any (DMatcher.matches $ mapDFAToDFA dict) notInp
 
 prop_minStates = do
     inp <- resize 10 $ genInpList
-    let dictNum = Data.Set.size $ DFA.states $ buildDictionary $ inp
-    let minNum = Data.Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
+    let dictNum = Set.size $ DFA.states $ buildDictionary $ map B.pack $ inp
+    let minNum = Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
     return $ minNum == dictNum

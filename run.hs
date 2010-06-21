@@ -4,9 +4,10 @@ import Automata.DFA.Datatype as DFA
 import Data.Set
 import System.Environment
 import Control.Monad
+import qualified Data.ByteString.Char8 as B
 
 main = do
-    inpStr <- readFile "test"
-    let inp = read inpStr :: [String]
+    inpStr <- B.readFile "test"
+    let inp = B.lines inpStr :: [B.ByteString]
     testSize <- liftM (read . (!!0)) $ getArgs :: IO Int
     putStrLn $ show $ size $ DFA.states $ buildDictionary $ take testSize inp
