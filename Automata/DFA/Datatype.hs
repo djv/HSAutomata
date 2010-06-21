@@ -143,5 +143,5 @@ buildDictionary l = fst3 $ foldl' step (MapDFA Map.empty 0 Set.empty, "", 1, 0) 
             | cur_st == s2 = (dfa, Nothing)
             | otherwise = {-# SCC "walkBack" #-} (dfa {transitionMap = redirectTransition, acceptKeys = traceShow (s2,a) $ Set.delete s2 a}, newCur) where
             redirectTransition = Map.insert (s1,x) cur_st $ deleteState s2 t
-            newCur = {-# SCC "newCur" #-} fmap (fst . fst) $ listToMaybe $ Map.toList $ Map.filterWithKey (\k a -> checkEquiv redirectTransition s1 (fst k)) $ Map.filterWithKey (isTo cur_st) t
+            newCur = {-# SCC "newCur" #-} fmap (fst . fst) $ listToMaybe $ Map.toList $ Map.filterWithKey (\k a -> checkEquiv redirectTransition s1 (fst k)) $ {-# SCC "filter_isTo" #-} Map.filterWithKey (isTo cur_st) t
             deleteState state trans = {-# SCC "deleteState" #-} foldl' (\t c -> Map.delete (state,c) t) trans ['a'..'c']

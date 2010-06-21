@@ -1,51 +1,50 @@
-	Mon Jun 21 10:11 2010 Time and Allocation Profiling Report  (Final)
+	Mon Jun 21 11:22 2010 Time and Allocation Profiling Report  (Final)
 
-	   run +RTS -p -RTS 1000
+	   run +RTS -p -RTS 5000
 
-	total time  =        0.86 secs   (43 ticks @ 20 ms)
-	total alloc =  33,856,476 bytes  (excludes profiling overheads)
+	total time  =       28.02 secs   (1401 ticks @ 20 ms)
+	total alloc = 503,690,912 bytes  (excludes profiling overheads)
 
 COST CENTRE                    MODULE               %time %alloc
 
-newCur                         Automata.DFA.Datatype  34.9    0.4
-main                           Main                  18.6   51.1
-insertNewStates                Automata.DFA.Datatype  14.0   12.0
-states                         Automata.DFA.Datatype  11.6   20.7
-buildDictionary                Automata.DFA.Datatype   9.3   10.1
-isTo                           Automata.DFA.Datatype   4.7    0.0
-trans                          Automata.DFA.Datatype   2.3    0.7
-checkEquiv                     Automata.DFA.Datatype   2.3    0.2
-candidates                     Automata.DFA.Datatype   2.3    0.7
-step                           Automata.DFA.Datatype   0.0    2.3
+filter_isTo                    Automata.DFA.Datatype  45.0    0.2
+isTo                           Automata.DFA.Datatype  36.6    0.0
+main                           Main                   8.7   71.8
+states                         Automata.DFA.Datatype   2.9   11.2
+buildDictionary                Automata.DFA.Datatype   2.3    6.8
+insertNewStates                Automata.DFA.Datatype   1.9    7.2
+trans                          Automata.DFA.Datatype   1.2    0.4
 
 
                                                                                                individual    inherited
 COST CENTRE              MODULE                                               no.    entries  %time %alloc   %time %alloc
 
 MAIN                     MAIN                                                   1           0   0.0    0.0   100.0  100.0
- main                    Main                                                 282           4  18.6   51.1   100.0   99.9
-  states                 Automata.DFA.Datatype                                314           1  11.6   20.7    11.6   20.7
-  buildDictionary        Automata.DFA.Datatype                                284       14821   9.3   10.1    69.8   28.0
-   deleteState           Automata.DFA.Datatype                                304        3655   0.0    0.1     0.0    0.1
-   isTo                  Automata.DFA.Datatype                                300     1254551   4.7    0.0     4.7    0.0
-   newCur                Automata.DFA.Datatype                                299         681  34.9    0.4    34.9    0.4
-   branchPoint           Automata.DFA.Datatype                                296        1000   0.0    0.0     0.0    0.1
+ main                    Main                                                 282           4   8.7   71.8   100.0  100.0
+  states                 Automata.DFA.Datatype                                316           1   2.9   11.2     2.9   11.2
+  buildDictionary        Automata.DFA.Datatype                                284       99095   2.3    6.8    88.4   17.0
+   deleteState           Automata.DFA.Datatype                                306       30655   0.1    0.1     0.1    0.1
+   isTo                  Automata.DFA.Datatype                                302    70942588  36.6    0.0    36.6    0.0
+   newCur                Automata.DFA.Datatype                                299        5835   0.1    0.1    45.3    0.3
+    filter_equiv         Automata.DFA.Datatype                                300        5835   0.1    0.1    45.2    0.2
+     filter_isTo         Automata.DFA.Datatype                                301        5835  45.0    0.2    45.0    0.2
+   branchPoint           Automata.DFA.Datatype                                296        5000   0.0    0.0     0.1    0.0
     startKey             Automata.DFA.Datatype                                298           0   0.0    0.0     0.0    0.0
-    transitionMap        Automata.DFA.Datatype                                297           0   0.0    0.0     0.0    0.0
-   trans                 Automata.DFA.Datatype                                294        8946   0.0    0.5     0.0    0.5
-   candidates            Automata.DFA.Datatype                                292        1000   2.3    0.7     2.3    0.8
+    transitionMap        Automata.DFA.Datatype                                297           0   0.1    0.0     0.1    0.0
+   trans                 Automata.DFA.Datatype                                294       65701   0.6    0.3     0.6    0.3
+   candidates            Automata.DFA.Datatype                                292        5000   0.0    0.3     0.0    0.3
     transitionMap        Automata.DFA.Datatype                                293           0   0.0    0.0     0.0    0.0
-   minimized             Automata.DFA.Datatype                                291        5978   0.0    0.2     0.0    0.2
-   checkEquiv            Automata.DFA.Datatype                                289        1151   2.3    0.2     4.7    1.1
-    transAll             Automata.DFA.Datatype                                301        6292   0.0    0.7     2.3    0.9
-     trans               Automata.DFA.Datatype                                303        4014   2.3    0.2     2.3    0.2
-    acceptKeys           Automata.DFA.Datatype                                290           0   0.0    0.1     0.0    0.1
+   minimized             Automata.DFA.Datatype                                291       37539   0.0    0.1     0.0    0.1
+   checkEquiv            Automata.DFA.Datatype                                289       11463   0.3    0.1     1.1    0.7
+    transAll             Automata.DFA.Datatype                                303       62926   0.2    0.5     0.8    0.6
+     trans               Automata.DFA.Datatype                                305       40268   0.6    0.1     0.6    0.1
+    acceptKeys           Automata.DFA.Datatype                                290           0   0.0    0.0     0.0    0.0
    fst3                  Automata.DFA.Datatype                                288           1   0.0    0.0     0.0    0.0
-   step                  Automata.DFA.Datatype                                287        1000   0.0    2.3     0.0    2.3
-    acceptKeys           Automata.DFA.Datatype                                311           0   0.0    0.0     0.0    0.0
-   insertNewStates       Automata.DFA.Datatype                                286        1000  14.0   12.0    14.0   12.0
-    transitionMap        Automata.DFA.Datatype                                295        1000   0.0    0.0     0.0    0.0
-   commonPrefix          Automata.DFA.Datatype                                285        1000   0.0    0.5     0.0    0.5
+   step                  Automata.DFA.Datatype                                287        5000   0.3    1.0     0.3    1.0
+    acceptKeys           Automata.DFA.Datatype                                315           0   0.0    0.0     0.0    0.0
+   insertNewStates       Automata.DFA.Datatype                                286        5000   1.9    7.2     1.9    7.2
+    transitionMap        Automata.DFA.Datatype                                295        5000   0.0    0.0     0.0    0.0
+   commonPrefix          Automata.DFA.Datatype                                285        5000   0.1    0.2     0.1    0.2
  CAF:main_a7             Main                                                 275           1   0.0    0.0     0.0    0.0
  CAF:main7               Main                                                 274           1   0.0    0.0     0.0    0.0
   main                   Main                                                 283           0   0.0    0.0     0.0    0.0
@@ -54,21 +53,21 @@ MAIN                     MAIN                                                   
  CAF                     GHC.Read                                             251           2   0.0    0.0     0.0    0.0
  CAF                     Text.Read.Lex                                        239           9   0.0    0.0     0.0    0.0
  CAF                     Data.HashTable                                       213           2   0.0    0.0     0.0    0.0
- CAF                     GHC.IO.Handle.FD                                     211           2   0.0    0.1     0.0    0.1
+ CAF                     GHC.IO.Handle.FD                                     211           2   0.0    0.0     0.0    0.0
  CAF                     System.Posix.Internals                               210           5   0.0    0.0     0.0    0.0
  CAF                     GHC.IO.FD                                            195           3   0.0    0.0     0.0    0.0
  CAF                     GHC.Conc                                             194           1   0.0    0.0     0.0    0.0
  CAF                     GHC.IO.Handle.Internals                              185           1   0.0    0.0     0.0    0.0
  CAF                     GHC.IO.Encoding.Iconv                                179           6   0.0    0.0     0.0    0.0
- CAF:lvl22_r1Du          Automata.DFA.Datatype                                176           1   0.0    0.0     0.0    0.0
-  buildDictionary        Automata.DFA.Datatype                                312           0   0.0    0.0     0.0    0.0
-   newCur                Automata.DFA.Datatype                                313           0   0.0    0.0     0.0    0.0
- CAF:a8_r1D0             Automata.DFA.Datatype                                173           1   0.0    0.0     0.0    0.0
- CAF:lvl7_r1Bc           Automata.DFA.Datatype                                166           1   0.0    0.0     0.0    0.0
-  transAll               Automata.DFA.Datatype                                302           0   0.0    0.0     0.0    0.0
- CAF:lvl6_r1Ba           Automata.DFA.Datatype                                165           1   0.0    0.0     0.0    0.0
-  buildDictionary        Automata.DFA.Datatype                                305           0   0.0    0.0     0.0    0.0
-   deleteState           Automata.DFA.Datatype                                306           0   0.0    0.0     0.0    0.0
- CAF:lvl5_r1B8           Automata.DFA.Datatype                                164           1   0.0    0.0     0.0    0.0
- CAF:lvl4_r1B6           Automata.DFA.Datatype                                163           1   0.0    0.0     0.0    0.0
+ CAF:lvl22_r1Dt          Automata.DFA.Datatype                                176           1   0.0    0.0     0.0    0.0
+  buildDictionary        Automata.DFA.Datatype                                313           0   0.0    0.0     0.0    0.0
+   newCur                Automata.DFA.Datatype                                314           0   0.0    0.0     0.0    0.0
+ CAF:a8_r1CZ             Automata.DFA.Datatype                                173           1   0.0    0.0     0.0    0.0
+ CAF:lvl7_r1Bb           Automata.DFA.Datatype                                166           1   0.0    0.0     0.0    0.0
+  transAll               Automata.DFA.Datatype                                304           0   0.0    0.0     0.0    0.0
+ CAF:lvl6_r1B9           Automata.DFA.Datatype                                165           1   0.0    0.0     0.0    0.0
+  buildDictionary        Automata.DFA.Datatype                                307           0   0.0    0.0     0.0    0.0
+   deleteState           Automata.DFA.Datatype                                308           0   0.0    0.0     0.0    0.0
+ CAF:lvl5_r1B7           Automata.DFA.Datatype                                164           1   0.0    0.0     0.0    0.0
+ CAF:lvl4_r1B5           Automata.DFA.Datatype                                163           1   0.0    0.0     0.0    0.0
  CAF                     System.Environment                                   142           2   0.0    0.0     0.0    0.0
