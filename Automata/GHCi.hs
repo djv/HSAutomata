@@ -31,6 +31,7 @@ regexOnscreenD = previewDot . DGraphviz.toGraphviz . minimize . mapNFAToMapDFA .
 
 nfaOnscreen x = previewDot . NGraphviz.toGraphviz . NFA.removeUnreachableStates $ x
 dfaOnscreen x = previewDot . DGraphviz.toGraphviz $ x
+mdfaOnscreen x = previewDot . DGraphviz.mtoGraphviz $ x
 
 type Widget = String
 type Link = String

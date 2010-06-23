@@ -7,6 +7,7 @@ module Automata.DFA.MyDFA (
     , myDFAToDFA
     , StateLabel
     , stateSize
+    , states
     , buildDictionary
 ) where
 
@@ -33,6 +34,11 @@ data MyDFA stateLabel a = MyDFA { transitionMap :: Map.Map (stateLabel, a) state
 
 myDFAToDFA (MyDFA t _ s a) = DFA.DFA (transitionMapToFunction t) s (`Set.member` a)
     where transitionMapToFunction m = curry (`Map.lookup` m)
+
+-- | Set of states in a DFA.
+states (MyDFA m _ s _) = Data.Set.unions [keyStates, valueStates, Data.Set.singleton s]
+    where keyStates = Data.Set.map fst (Map.keysSet m)
+          valueStates = Data.Set.fromList (Map.elems m)
 
 stateSize (MyDFA m _ s _) = 1 + (List.length $ Map.keys m)
 
