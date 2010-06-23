@@ -83,3 +83,5 @@ prop_minStates = do
     let dictNum = MDFA.stateSize $ buildDictionary $ map B.pack $ inp
     let minNum = Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
     return $ minNum == dictNum
+
+l = ["a","a","aaaaacb","aaaabab","aab","aabbacccbab","aaccaccbbaaa","ab","ab","abbaabbbbca","abbcaaacbcaab","abcaaa","abcaabcaba","abccb","acbaaa","acbcbbcbbc","acbccac","acccaccbcbb","accccaca","b","b","b","b","ba","baab","baabbbbcbccac","baabcabab","bababbacba","bbac","bbaca","bbba","bbbc","bbbcc","bbccb","bc","bcaa","bcacbaaabbca","bcbaaacbabaccacbcbcb","bcbacba","bcbbbcb","bcbcbaaabcbc","bccacabbacaa","c","caabbacbbbbc","caabbc","caabbcbaa","cab","cabaacabb","cabbabcccc","cabc","cacbbccbcaaaabacaa","cacca","cb","cbabbabbcb","cbacabbbaaa","cbacacacaacccabb","cbbbbaa","cbbc","cbbca","cc","ccab","ccacbbaa","ccbaccbbaab","ccbcaaabbbbcacc","ccc","ccc","cccacccaaaa"]

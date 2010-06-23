@@ -21,7 +21,6 @@ import Debug.Trace
 import Prelude hiding (drop, length, init, tail, scanl, reverse, last, map, null, zip)
 import Data.ByteString.Char8
 import qualified Automata.DFA.Datatype as DFA
-
 import Maybe
 
 type StateLabel = Int
@@ -59,8 +58,8 @@ successors s dfa = List.map (trans dfa s) alphabet
 
 isFinal s dfa = s `Set.member` acceptKeys dfa
 
-checkEquiv :: MyDFA StateLabel Char -> Bool -> [Maybe StateLabel] -> StateLabel -> Bool
-checkEquiv dfa finality succs s2 = (finality == s2 `isFinal` dfa) && (succs == s2 `successors` dfa)
+checkEquiv :: MyDFA StateLabel Char -> StateLabel -> StateLabel -> Bool
+checkEquiv dfa s1 s2 = (s1 `isFinal` dfa == s2 `isFinal` dfa) && (s1 `successors` dfa == s2 `successors` dfa)
 
 transStar :: MyDFA StateLabel Char -> ByteString -> StateLabel
 transStar dfa pref = foldl' (\n e -> fromJust $ trans dfa n e) (startKey dfa) pref
@@ -72,13 +71,14 @@ statesOnPath dfa state str = List.scanl (\n e -> fromJust $ trans dfa n e) state
 predecessors :: MyDFA StateLabel Char -> StateLabel -> [StateLabel]
 predecessors dfa state = (invertMap dfa) IMap.! state --List.map fst $ Map.keys $ Map.filter (==state) $ transitionMap dfa
 
-findEquiv :: MyDFA StateLabel Char -> StateLabel -> Bool -> [Maybe StateLabel] -> StateLabel -> Maybe StateLabel
-findEquiv dfa state finality succs goingTo = listToMaybe $ List.filter (/= state) $ List.filter (checkEquiv dfa finality succs) $ predecessors dfa goingTo
+findEquiv :: MyDFA StateLabel Char -> StateLabel -> StateLabel -> Maybe StateLabel
+findEquiv dfa state goingTo = listToMaybe $ List.filter (/= state) $ List.filter (checkEquiv dfa state) $ predecessors dfa goingTo
 
 deleteState :: StateLabel -> MyDFA StateLabel Char -> MyDFA StateLabel Char
-deleteState state dfa = dfa {transitionMap = List.foldl' (\t c -> Map.delete (state,c) t) (transitionMap dfa) (List.map fst succTrans)}
+deleteState state dfa = dfa {transitionMap = List.foldl' (\t c -> Map.delete (state,c) t) (transitionMap dfa) (List.map fst succTrans), invertMap = delFromInvert}
     where succs = state `successors` dfa
           succTrans = catMaybes $ List.zipWith (\c s -> fmap (c,) s) alphabet succs
+          delFromInvert = List.foldl' (\t s2 -> IMap.adjust (List.delete state) s2 t) (invertMap dfa) (List.map snd succTrans)
 
 insertTransition :: (StateLabel, Char, StateLabel) -> MyDFA StateLabel Char -> MyDFA StateLabel Char
 insertTransition (s1,x,s2) dfa = dfa {transitionMap = Map.insert (s1,x) s2 (transitionMap dfa)
@@ -120,4 +120,4 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1, 0) l where
             | otherwise = (newDfa, newCur) where
             newDfa = redirectTransition {acceptKeys = Set.delete s2 (acceptKeys dfa)}
             redirectTransition = insertTransition (s1,x,cur_st) $ deleteState s2 dfa
-            newCur = findEquiv newDfa s1 (s1 `isFinal` dfa) (s1 `successors` dfa) cur_st
+            newCur = findEquiv newDfa s1 cur_st

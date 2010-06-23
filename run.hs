@@ -1,6 +1,6 @@
 module Main where
 
-import Automata.DFA.Datatype as DFA
+import Automata.DFA.MyDFA as MDFA
 import Data.Set
 import System.Environment
 import Control.Monad
