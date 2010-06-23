@@ -1,5 +1,6 @@
 module Automata.DFA.Graphviz (
       toGraphviz,
+      mtoGraphviz,
       toSimpleGraphviz
     ) where
     
@@ -7,8 +8,10 @@ import Automata.DFA.Datatype ( MapDFA(..)
                              , StateLabel
                              , states
                              )
+import qualified Automata.DFA.MyDFA as MDFA
                              
-import qualified Data.Set as Set                             
+import qualified Data.Set as Set
+import qualified Data.IntSet as ISet
 import qualified Data.Map as Map
 
 import qualified Data.Graph.Inductive.Graphviz as SimpleGraphviz
@@ -38,6 +41,29 @@ toDotGraph dfa = graphToDot True
     where nodeToAttr (n, a) | n `Set.member` acceptKeys dfa = [Style [SItem Bold []]]
                             | otherwise = []
           edgeToAttr (from, to, label) = [Label (StrLabel (show label))]
+
+mtoGraphviz :: (Show a, Ord a) => MDFA.MyDFA StateLabel a -> String
+mtoGraphviz = printDotGraph . mtoDotGraph
+
+mtoDotGraph dfa = graphToDot True 
+                            (mmakeGraph dfa) 
+                            [GraphAttrs [Page (PointD 8.5 11), 
+                                         Size (PointD 8.5 11),
+                                         RankDir FromLeft,
+                                         Landscape True,
+                                         Center True]]
+                            nodeToAttr 
+                            edgeToAttr
+    where nodeToAttr (n, a) | n `ISet.member` MDFA.acceptKeys dfa = [Style [SItem Bold []]]
+                            | otherwise = []
+          edgeToAttr (from, to, label) = [Label (StrLabel (show label))]
+
+--fix type to fix ambiguity
+mmakeGraph :: (Show a, Ord a) => MDFA.MyDFA StateLabel a -> Gr StateLabel a 
+mmakeGraph dfa = mkGraph (nodes dfa) (edges dfa)
+    where nodes dfa = [(a, a) | a <- Set.toList $ MDFA.states dfa]
+          edges dfa = Map.foldWithKey fn [] (MDFA.transitionMap dfa)
+            where fn (from, label) to accum = (from, to, label) : accum
 
 --fix type to fix ambiguity
 makeGraph :: (Show a, Ord a) => MapDFA StateLabel a -> Gr StateLabel a 

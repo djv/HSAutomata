@@ -2,6 +2,7 @@
 module Automata.GHCi where
 
 import Automata.DFA.Datatype as DFA
+import Automata.DFA.MyDFA as MDFA
 import Automata.NFA.Datatype as NFA
 import qualified Automata.NFA.Graphviz as NGraphviz
 import qualified Automata.DFA.Graphviz as DGraphviz
@@ -30,6 +31,7 @@ regexOnscreenD = previewDot . DGraphviz.toGraphviz . minimize . mapNFAToMapDFA .
 
 nfaOnscreen x = previewDot . NGraphviz.toGraphviz . NFA.removeUnreachableStates $ x
 dfaOnscreen x = previewDot . DGraphviz.toGraphviz $ x
+mdfaOnscreen x = previewDot . DGraphviz.mtoGraphviz $ x
 
 type Widget = String
 type Link = String
@@ -68,16 +70,18 @@ genInpList = listOf1 $ listOf1 $ choose ('a', 'c')
 prop_accepts = do
     inp <- genInpList
     let dict = buildDictionary $ map B.pack $ sort inp
-    return $ all (DMatcher.matches (mapDFAToDFA dict)) inp
+    return $ all (DMatcher.matches (myDFAToDFA dict)) inp
 
 prop_notAccepts = do
     inp <- genInpList
     let dict = buildDictionary $ map B.pack $ sort inp
     notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
-    return $ not $ Data.List.any (DMatcher.matches $ mapDFAToDFA dict) notInp
+    return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
 
 prop_minStates = do
     inp <- resize 10 $ genInpList
-    let dictNum = Set.size $ DFA.states $ buildDictionary $ map B.pack $ inp
+    let dictNum = MDFA.stateSize $ buildDictionary $ map B.pack $ inp
     let minNum = Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
     return $ minNum == dictNum
+
+l = ["a","a","aaaaacb","aaaabab","aab","aabbacccbab","aaccaccbbaaa","ab","ab","abbaabbbbca","abbcaaacbcaab","abcaaa","abcaabcaba","abccb","acbaaa","acbcbbcbbc","acbccac","acccaccbcbb","accccaca","b","b","b","b","ba","baab","baabbbbcbccac","baabcabab","bababbacba","bbac","bbaca","bbba","bbbc","bbbcc","bbccb","bc","bcaa","bcacbaaabbca","bcbaaacbabaccacbcbcb","bcbacba","bcbbbcb","bcbcbaaabcbc","bccacabbacaa","c","caabbacbbbbc","caabbc","caabbcbaa","cab","cabaacabb","cabbabcccc","cabc","cacbbccbcaaaabacaa","cacca","cb","cbabbabbcb","cbacabbbaaa","cbacacacaacccabb","cbbbbaa","cbbc","cbbca","cc","ccab","ccacbbaa","ccbaccbbaab","ccbcaaabbbbcacc","ccc","ccc","cccacccaaaa"]
