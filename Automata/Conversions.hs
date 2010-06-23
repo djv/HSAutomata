@@ -44,7 +44,7 @@ Not so good:
 
 -}
 
-mapDFAToMapNFA (DFA.MapDFA t i s a) 
+mapDFAToMapNFA (DFA.MapDFA t s a) 
     = NFA.MapNFA { NFA.transitionMap = Map.map Set.singleton $ Map.mapKeys (second Just) t
                  , NFA.startKey = s
                  , NFA.acceptKeys = a
@@ -91,7 +91,6 @@ acceptingStateSets nfa
 mapNFAToComplexMapDFA nfa 
     = let (_dstates, transitionMap, accepting) = nfaToDFAHelper nfa
       in DFA.MapDFA { DFA.transitionMap = transitionMap
-                    , DFA.invertMap = IMap.empty
                     , DFA.startKey = initStateSet nfa
                     , DFA.acceptKeys = accepting
                     }

@@ -4,7 +4,7 @@ import Control.Monad
 import Data.Set
 import Maybe
 import Data.Monoid
-import Automata.DFA.Datatype (DFA(..),DTransducer(..), buildDictionary, mapDFAToDFA)
+import Automata.DFA.Datatype (DFA(..),DTransducer(..), mapDFAToDFA)
 
 -- | A DFA 'matches' a finite list of input 
 -- iff after following a transition for each item in the list, 

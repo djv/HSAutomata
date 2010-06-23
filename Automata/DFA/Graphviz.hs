@@ -8,7 +8,7 @@ import Automata.DFA.Datatype ( MapDFA(..)
                              , states
                              )
                              
-import qualified Data.Set as Set                             
+import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import qualified Data.Graph.Inductive.Graphviz as SimpleGraphviz

@@ -2,6 +2,7 @@
 module Automata.GHCi where
 
 import Automata.DFA.Datatype as DFA
+import Automata.DFA.MyDFA as MDFA
 import Automata.NFA.Datatype as NFA
 import qualified Automata.NFA.Graphviz as NGraphviz
 import qualified Automata.DFA.Graphviz as DGraphviz
@@ -68,16 +69,16 @@ genInpList = listOf1 $ listOf1 $ choose ('a', 'c')
 prop_accepts = do
     inp <- genInpList
     let dict = buildDictionary $ map B.pack $ sort inp
-    return $ all (DMatcher.matches (mapDFAToDFA dict)) inp
+    return $ all (DMatcher.matches (myDFAToDFA dict)) inp
 
 prop_notAccepts = do
     inp <- genInpList
     let dict = buildDictionary $ map B.pack $ sort inp
     notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
-    return $ not $ Data.List.any (DMatcher.matches $ mapDFAToDFA dict) notInp
+    return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
 
 prop_minStates = do
     inp <- resize 10 $ genInpList
-    let dictNum = Set.size $ DFA.states $ buildDictionary $ map B.pack $ inp
+    let dictNum = MDFA.stateSize $ buildDictionary $ map B.pack $ inp
     let minNum = Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
     return $ minNum == dictNum
