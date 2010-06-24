@@ -14,13 +14,14 @@ module Automata.DFA.MyDFA (
 ) where
 
 import Control.Monad
+import Control.Arrow
 import qualified Data.Map
 import qualified Data.IntMap as Map
 import qualified Data.Set
 import qualified Data.IntSet as Set
 import qualified Data.List as List
 import Debug.Trace
-import Prelude hiding (drop, length, init, tail, scanl, reverse, last, map, null, zip)
+import Prelude hiding (drop, length, init, tail, scanl, reverse, last, map, null, zip, lines, readFile, take)
 import Data.ByteString.Char8
 import qualified Automata.DFA.Datatype as DFA
 import Data.Maybe
@@ -33,18 +34,22 @@ data MyDFA = MyDFA { transitionMap :: Map.IntMap StateLabel
                                   , invertMap :: Map.IntMap [StateLabel]
                                   , startKey :: StateLabel
                                   , final :: StateLabel
+                                  , transFP :: Map.IntMap [StateLabel]
+                                  , validTrans :: Map.IntMap [Char]
                                   , acceptKeys :: Set.IntSet
                                   } deriving (Show)
 
-myDFAToDFA (MyDFA t _ s _ a) = DFA.DFA (transitionMapToFunction t) s (`Set.member` a)
+emptyDFA = MyDFA Map.empty Map.empty 0 0 Map.empty Map.empty Set.empty
+
+myDFAToDFA dfa = DFA.DFA (transitionMapToFunction $ transitionMap dfa) (startKey dfa) (`Set.member` acceptKeys dfa)
     where transitionMapToFunction m s c = Map.lookup (toKey (s,c)) m
 
 -- | Set of states in a DFA.
-states (MyDFA m _ s _ _) = Set.unions [keyStates, valueStates, Set.singleton s]
-    where keyStates = Set.map (fst . fromKey) (Map.keysSet m)
-          valueStates = Set.fromList (Map.elems m)
+states dfa = Set.unions [keyStates, valueStates, Set.singleton $ startKey dfa]
+    where keyStates = Set.map (fst . fromKey) (Map.keysSet $ transitionMap dfa)
+          valueStates = Set.fromList (Map.elems $ transitionMap dfa)
 
-stateSize (MyDFA m _ s _ _) = 1 + (List.length $ Map.keys m)
+stateSize dfa = 1 + (List.length $ Map.keys $ transitionMap dfa)
 
 toKey :: (StateLabel, Char) -> Map.Key
 toKey (s, c) = s `shiftL` 8 + ord c
@@ -62,10 +67,8 @@ fst3 (x,_,_) = x
 
 alphabet = ['a'..'z']
 
-emptyDFA = MyDFA Map.empty Map.empty 0 0 Set.empty
-
 trans dfa n e = toKey (n,e) `Map.lookup` (transitionMap dfa)
-successors s dfa = List.map (trans dfa s) alphabet
+successors s dfa = List.map (trans dfa s) $ (validTrans dfa) Map.! s
 
 isFinal s dfa = s `Set.member` acceptKeys dfa
 
@@ -89,14 +92,17 @@ findEquivFrom :: MyDFA -> StateLabel -> [StateLabel] -> Maybe StateLabel
 findEquivFrom dfa state l = listToMaybe $ List.filter (/= state) $ List.filter (checkEquiv dfa state) l
 
 deleteState :: StateLabel -> MyDFA -> MyDFA 
-deleteState state dfa = dfa {transitionMap = List.foldl' (\t c -> Map.delete (toKey (state,c)) t) (transitionMap dfa) (List.map snd succTrans), invertMap = delFromInvert}
+deleteState state dfa = dfa {transitionMap = List.foldl' (\t c -> Map.delete (toKey (state,c)) t) (transitionMap dfa) (List.map snd succTrans), invertMap = delFromInvert, validTrans = delFromValidTrans}
     where succs = state `successors` dfa
           succTrans = catMaybes $ List.zipWith (\c s -> fmap (,c) s) alphabet succs
           delFromInvert = List.foldl' (\t sc -> Map.adjust (List.delete state) (toKey sc) t) (invertMap dfa) succTrans
+          delFromValidTrans = traceShow (Map.lookup state (validTrans dfa)) $ Map.delete state (validTrans dfa)
 
 insertTransition :: (StateLabel, Char, StateLabel) -> MyDFA -> MyDFA 
 insertTransition (s1,x,s2) dfa = dfa {transitionMap = Map.insert (toKey (s1,x)) s2 (transitionMap dfa)
                                         , invertMap = Map.insertWith (++) (toKey (s2,x)) [s1] (invertMap dfa)}
+
+redirectTransition dfa s1 x s2 to = insertTransition (s1,x,to) $ deleteState s2 dfa
 
 buildDictionary :: [ByteString] -> MyDFA 
 buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
@@ -120,9 +126,10 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
         --new state labels for the newSuffix path
         newStates = [newIndex .. newIndex + length newSuffix - 1]
         --insert newStates in minimized
-        insertNewStates = (List.foldl' (flip insertTransition) minimized $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal} where
+        insertNewStates = traceShow (List.map (first fromKey) $ Map.toList $ transitionMap dfa, newStates, pref, branchPoint, lastSuffix, newSuffix) $ (List.foldl' (flip insertTransition) minimized $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal} {validTrans = updateValidTrans} where
             --mark last of newStates as final
             insertNewFinal = Set.insert (List.last newStates) (acceptKeys minimized)
+            updateValidTrans = List.foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) $ List.zip (branchPoint:List.init newStates) (unpack newSuffix)
 
         --change final if it is on the new path
         newFinal = if null lastSuffix && final dfa == branchPoint then newIndex + length newSuffix - 1 else final dfa
@@ -132,6 +139,6 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
         walkBack (dfa, Just cur_st) (s1, x, s2)
             | cur_st == s2 = (dfa, Nothing)
             | otherwise = (newDfa, newCur) where
-            newDfa = redirectTransition {acceptKeys = Set.delete s2 (acceptKeys dfa)}
-            redirectTransition = insertTransition (s1,x,cur_st) $ deleteState s2 dfa
+            newDfa = redirect {acceptKeys = Set.delete s2 (acceptKeys dfa)}
+            redirect = redirectTransition dfa s1 x s2 cur_st
             newCur = findEquiv newDfa s1 x cur_st
