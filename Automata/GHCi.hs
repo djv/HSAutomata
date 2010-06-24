@@ -84,4 +84,10 @@ prop_minStates = do
     let minNum = Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
     return $ minNum == dictNum
 
+checkSize = do
+        inpStr <- B.readFile "test"
+        let inp = B.lines inpStr :: [B.ByteString]
+        let tests = [(500,1702), (5000,12709)]
+        return $ map (uncurry (==) . first (stateSize . buildDictionary . (flip take) inp)) tests
+
 l = ["a","a","aaaaacb","aaaabab","aab","aabbacccbab","aaccaccbbaaa","ab","ab","abbaabbbbca","abbcaaacbcaab","abcaaa","abcaabcaba","abccb","acbaaa","acbcbbcbbc","acbccac","acccaccbcbb","accccaca","b","b","b","b","ba","baab","baabbbbcbccac","baabcabab","bababbacba","bbac","bbaca","bbba","bbbc","bbbcc","bbccb","bc","bcaa","bcacbaaabbca","bcbaaacbabaccacbcbcb","bcbacba","bcbbbcb","bcbcbaaabcbc","bccacabbacaa","c","caabbacbbbbc","caabbc","caabbcbaa","cab","cabaacabb","cabbabcccc","cabc","cacbbccbcaaaabacaa","cacca","cb","cbabbabbcb","cbacabbbaaa","cbacacacaacccabb","cbbbbaa","cbbc","cbbca","cc","ccab","ccacbbaa","ccbaccbbaab","ccbcaaabbbbcacc","ccc","ccc","cccacccaaaa"]
