@@ -67,8 +67,8 @@ fst3 (x,_,_) = x
 
 alphabet = ['a'..'z']
 
-trans dfa n e = toKey (n,e) `Map.lookup` (transitionMap dfa)
-successors s dfa = List.map (trans dfa s) $ (validTrans dfa) Map.! s
+trans dfa n e = transitionMap dfa Map.! toKey (n,e) --toKey (n,e) `Map.lookup` (transitionMap dfa)
+successors s dfa = List.map (trans dfa s) $ Map.findWithDefault "" s (validTrans dfa)
 
 isFinal s dfa = s `Set.member` acceptKeys dfa
 
@@ -76,27 +76,28 @@ checkEquiv :: MyDFA -> StateLabel -> StateLabel -> Bool
 checkEquiv dfa s1 s2 = (s1 `isFinal` dfa == s2 `isFinal` dfa) && (s1 `successors` dfa == s2 `successors` dfa)
 
 transStar :: MyDFA -> ByteString -> StateLabel
-transStar dfa pref = foldl' (\n e -> fromJust $ trans dfa n e) (startKey dfa) pref
+transStar dfa pref = foldl' (\n e -> trans dfa n e) (startKey dfa) pref
 
 --list of states in dfa starting from state by traversing str
 statesOnPath :: MyDFA -> StateLabel -> ByteString -> [StateLabel]
-statesOnPath dfa state str = List.scanl (\n e -> fromJust $ trans dfa n e) state (unpack str)
+statesOnPath dfa state str = List.scanl (\n e -> trans dfa n e) state (unpack str)
 
 predecessors :: MyDFA -> Char -> StateLabel -> [StateLabel]
 predecessors dfa c state = (invertMap dfa) Map.! toKey (state, c) --List.map fst $ Map.keys $ Map.filter (==state) $ transitionMap dfa
 
 findEquiv :: MyDFA -> StateLabel -> Char -> StateLabel -> Maybe StateLabel
-findEquiv dfa state c goingTo = findEquivFrom dfa state $ predecessors dfa c goingTo
+findEquiv dfa state c goingTo = findEquivFrom dfa state $ if goingTo == final dfa then undefined else predecessors dfa c goingTo
 
 findEquivFrom :: MyDFA -> StateLabel -> [StateLabel] -> Maybe StateLabel
 findEquivFrom dfa state l = listToMaybe $ List.filter (/= state) $ List.filter (checkEquiv dfa state) l
 
 deleteState :: StateLabel -> MyDFA -> MyDFA 
-deleteState state dfa = dfa {transitionMap = List.foldl' (\t c -> Map.delete (toKey (state,c)) t) (transitionMap dfa) (List.map snd succTrans), invertMap = delFromInvert, validTrans = delFromValidTrans}
+deleteState state dfa = dfa {transitionMap = updateTransition, invertMap = delFromInvert, validTrans = delFromValidTrans}
     where succs = state `successors` dfa
-          succTrans = catMaybes $ List.zipWith (\c s -> fmap (,c) s) alphabet succs
+          succTrans = List.zipWith (flip (,)) (Map.findWithDefault "" state (validTrans dfa)) succs
+          updateTransition = List.foldl' (\t c -> Map.delete (toKey (state,c)) t) (transitionMap dfa) (List.map snd succTrans)
           delFromInvert = List.foldl' (\t sc -> Map.adjust (List.delete state) (toKey sc) t) (invertMap dfa) succTrans
-          delFromValidTrans = traceShow (Map.lookup state (validTrans dfa)) $ Map.delete state (validTrans dfa)
+          delFromValidTrans = Map.delete state (validTrans dfa)
 
 insertTransition :: (StateLabel, Char, StateLabel) -> MyDFA -> MyDFA 
 insertTransition (s1,x,s2) dfa = dfa {transitionMap = Map.insert (toKey (s1,x)) s2 (transitionMap dfa)
@@ -126,7 +127,7 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
         --new state labels for the newSuffix path
         newStates = [newIndex .. newIndex + length newSuffix - 1]
         --insert newStates in minimized
-        insertNewStates = traceShow (List.map (first fromKey) $ Map.toList $ transitionMap dfa, newStates, pref, branchPoint, lastSuffix, newSuffix) $ (List.foldl' (flip insertTransition) minimized $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal} {validTrans = updateValidTrans} where
+        insertNewStates = (List.foldl' (flip insertTransition) minimized $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal} {validTrans = updateValidTrans} where
             --mark last of newStates as final
             insertNewFinal = Set.insert (List.last newStates) (acceptKeys minimized)
             updateValidTrans = List.foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) $ List.zip (branchPoint:List.init newStates) (unpack newSuffix)
