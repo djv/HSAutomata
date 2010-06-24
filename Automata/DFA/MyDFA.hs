@@ -32,18 +32,19 @@ type StateLabel = Int
 data MyDFA = MyDFA { transitionMap :: Map.IntMap StateLabel
                                   , invertMap :: Map.IntMap [StateLabel]
                                   , startKey :: StateLabel
+                                  , final :: StateLabel
                                   , acceptKeys :: Set.IntSet
                                   } deriving (Show)
 
-myDFAToDFA (MyDFA t _ s a) = DFA.DFA (transitionMapToFunction t) s (`Set.member` a)
+myDFAToDFA (MyDFA t _ s _ a) = DFA.DFA (transitionMapToFunction t) s (`Set.member` a)
     where transitionMapToFunction m s c = Map.lookup (toKey (s,c)) m
 
 -- | Set of states in a DFA.
-states (MyDFA m _ s _) = Set.unions [keyStates, valueStates, Set.singleton s]
+states (MyDFA m _ s _ _) = Set.unions [keyStates, valueStates, Set.singleton s]
     where keyStates = Set.map (fst . fromKey) (Map.keysSet m)
           valueStates = Set.fromList (Map.elems m)
 
-stateSize (MyDFA m _ s _) = 1 + (List.length $ Map.keys m)
+stateSize (MyDFA m _ s _ _) = 1 + (List.length $ Map.keys m)
 
 toKey :: (StateLabel, Char) -> Map.Key
 toKey (s, c) = s `shiftL` 8 + ord c
@@ -57,11 +58,11 @@ commonPrefix xs ys | null xs || null ys = empty
                                         if x==y then cons x (commonPrefix xs' ys') else empty
 
 
-fst3 (x,_,_,_) = x
+fst3 (x,_,_) = x
 
 alphabet = ['a'..'z']
 
-emptyDFA = MyDFA Map.empty Map.empty 0 Set.empty
+emptyDFA = MyDFA Map.empty Map.empty 0 0 Set.empty
 
 trans dfa n e = toKey (n,e) `Map.lookup` (transitionMap dfa)
 successors s dfa = List.map (trans dfa s) alphabet
@@ -98,13 +99,13 @@ insertTransition (s1,x,s2) dfa = dfa {transitionMap = Map.insert (toKey (s1,x)) 
                                         , invertMap = Map.insertWith (++) (toKey (s2,x)) [s1] (invertMap dfa)}
 
 buildDictionary :: [ByteString] -> MyDFA 
-buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1, 0) l where
-    step :: (MyDFA , ByteString, Int, Int) -> ByteString -> (MyDFA , ByteString, Int, Int)
-    step (dfa, lastWord, newIndex, final) newWord
-        | lastWord == newWord = (dfa, lastWord, newIndex, final)
-        | otherwise = (insertNewStates, newWord, newIndex + length newSuffix, newFinal) where
+buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
+    step :: (MyDFA , ByteString, Int) -> ByteString -> (MyDFA , ByteString, Int)
+    step (dfa, lastWord, newIndex) newWord
+        | lastWord == newWord = (dfa, lastWord, newIndex)
+        | otherwise = (insertNewStates {final = newFinal}, newWord, newIndex + length newSuffix) where
 
-        minimized = fst $ List.foldl' walkBack (dfa, Just final) $ List.reverse $ candidatesTransitions
+        minimized = {-# SCC "minimized" #-} fst $ List.foldl' walkBack (dfa, Just $ final dfa) $ List.reverse $ candidatesTransitions
 
         pref = commonPrefix lastWord newWord
         lastSuffix = drop (length pref) lastWord
@@ -124,7 +125,7 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1, 0) l where
             insertNewFinal = Set.insert (List.last newStates) (acceptKeys minimized)
 
         --change final if it is on the new path
-        newFinal = if null lastSuffix && final == branchPoint then newIndex + length newSuffix - 1 else final
+        newFinal = if null lastSuffix && final dfa == branchPoint then newIndex + length newSuffix - 1 else final dfa
 
         walkBack :: (MyDFA , Maybe StateLabel) -> (StateLabel, Char, StateLabel) -> (MyDFA , Maybe StateLabel)
         walkBack (dfa, Nothing) _ = (dfa, Nothing)

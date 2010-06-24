@@ -67,7 +67,7 @@ mmakeGraph dfa = mkGraph (nodes dfa) (edges dfa)
             where fn k to accum = let (from, label) = MDFA.fromKey k in (from, to, label) : accum
 
 --fix type to fix ambiguity
-makeGraph :: (Show a, Ord a) => MapDFA StateLabel a -> Gr StateLabel a 
+makeGraph :: (Show a, Ord a) => MapDFA StateLabel a-> Gr StateLabel a 
 makeGraph dfa = mkGraph (nodes dfa) (edges dfa)
     where nodes dfa = [(a, a) | a <- Set.toList $ states dfa]
           edges dfa = Map.foldWithKey fn [] (transitionMap dfa)
