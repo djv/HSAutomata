@@ -72,8 +72,8 @@ successors s dfa = List.map (trans dfa s) $ Map.findWithDefault "" s (validTrans
 
 isFinal s dfa = s `Set.member` acceptKeys dfa
 
-checkEquiv :: MyDFA -> StateLabel -> StateLabel -> Bool
-checkEquiv dfa s1 s2 = (s1 `isFinal` dfa == s2 `isFinal` dfa) && (s1 `successors` dfa == s2 `successors` dfa)
+checkEquiv :: MyDFA -> Bool -> [StateLabel] -> StateLabel -> Bool
+checkEquiv dfa finality succs s2 = (finality == s2 `isFinal` dfa) && (succs == s2 `successors` dfa)
 
 transStar :: MyDFA -> ByteString -> StateLabel
 transStar dfa pref = foldl' (\n e -> trans dfa n e) (startKey dfa) pref
@@ -86,10 +86,10 @@ predecessors :: MyDFA -> Char -> StateLabel -> [StateLabel]
 predecessors dfa c state = (invertMap dfa) Map.! toKey (state, c) --List.map fst $ Map.keys $ Map.filter (==state) $ transitionMap dfa
 
 findEquiv :: MyDFA -> StateLabel -> Char -> StateLabel -> Maybe StateLabel
-findEquiv dfa state c goingTo = findEquivFrom dfa state $ if goingTo == final dfa then undefined else predecessors dfa c goingTo
+findEquiv dfa state c goingTo = findEquivFrom dfa state $ predecessors dfa c goingTo --if goingTo == final dfa then undefined else predecessors dfa c goingTo
 
 findEquivFrom :: MyDFA -> StateLabel -> [StateLabel] -> Maybe StateLabel
-findEquivFrom dfa state l = listToMaybe $ List.filter (/= state) $ List.filter (checkEquiv dfa state) l
+findEquivFrom dfa state l = listToMaybe $ List.filter (/= state) $ List.filter (checkEquiv dfa (state `isFinal` dfa) (state `successors` dfa)) l
 
 deleteState :: StateLabel -> MyDFA -> MyDFA 
 deleteState state dfa = dfa {transitionMap = updateTransition, invertMap = delFromInvert, validTrans = delFromValidTrans}

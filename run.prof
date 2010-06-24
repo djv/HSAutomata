@@ -1,70 +1,75 @@
-	Thu Jun 24 12:47 2010 Time and Allocation Profiling Report  (Final)
+	Thu Jun 24 16:59 2010 Time and Allocation Profiling Report  (Final)
 
-	   run +RTS -H63m -A32m -p -RTS 10000
+	   run +RTS -p -RTS 20000
 
-	total time  =        9.16 secs   (458 ticks @ 20 ms)
-	total alloc = 370,371,300 bytes  (excludes profiling overheads)
+	total time  =        8.68 secs   (434 ticks @ 20 ms)
+	total alloc = 787,431,172 bytes  (excludes profiling overheads)
 
 COST CENTRE                    MODULE               %time %alloc
 
-successors                     Automata.DFA.MyDFA    31.9   37.4
-trans                          Automata.DFA.MyDFA    25.1   11.1
-isFinal                        Automata.DFA.MyDFA    15.1    0.0
-checkEquiv                     Automata.DFA.MyDFA     9.6   10.5
-redirectTransition             Automata.DFA.MyDFA     5.9   14.7
-buildDictionary                Automata.DFA.MyDFA     5.0   18.8
-findEquivFrom                  Automata.DFA.MyDFA     3.7    0.5
-toKey                          Automata.DFA.MyDFA     1.1    0.9
-deleteState                    Automata.DFA.MyDFA     0.4    1.1
-commonPrefix                   Automata.DFA.MyDFA     0.4    2.0
-statesOnPath                   Automata.DFA.MyDFA     0.2    1.3
+successors                     Automata.DFA.MyDFA    34.1   38.3
+trans                          Automata.DFA.MyDFA    23.0   10.1
+isFinal                        Automata.DFA.MyDFA    14.5    0.0
+checkEquiv                     Automata.DFA.MyDFA     9.0    9.3
+redirectTransition             Automata.DFA.MyDFA     6.9   15.6
+findEquivFrom                  Automata.DFA.MyDFA     5.8    0.9
+buildDictionary                Automata.DFA.MyDFA     4.1   18.9
+statesOnPath                   Automata.DFA.MyDFA     0.2    1.2
+deleteState                    Automata.DFA.MyDFA     0.2    1.1
+commonPrefix                   Automata.DFA.MyDFA     0.0    2.0
 
 
                                                                                                individual    inherited
 COST CENTRE              MODULE                                               no.    entries  %time %alloc   %time %alloc
 
 MAIN                     MAIN                                                   1           0   0.0    0.0   100.0  100.0
- main                    Main                                                 326           4   0.0    0.8   100.0  100.0
-  stateSize              Automata.DFA.MyDFA                                   369           1   0.0    0.3     0.0    0.3
-   transitionMap         Automata.DFA.MyDFA                                   370           1   0.0    0.0     0.0    0.0
-  buildDictionary        Automata.DFA.MyDFA                                   328       10001   5.0   18.8   100.0   99.0
-   acceptKeys            Automata.DFA.MyDFA                                   358       52016   0.0    0.0     0.0    0.0
-   validTrans            Automata.DFA.MyDFA                                   353        9999   0.0    0.0     0.0    0.0
-   invertMap             Automata.DFA.MyDFA                                   351       57820   0.0    0.0     0.0    0.0
-   redirectTransition    Automata.DFA.MyDFA                                   347       42017   5.9   14.7     7.2   17.1
-    transitionMap        Automata.DFA.MyDFA                                   364       84034   0.0    0.0     0.0    0.0
-    validTrans           Automata.DFA.MyDFA                                   362       39380   0.0    0.0     0.0    0.0
-    invertMap            Automata.DFA.MyDFA                                   350       84034   0.0    0.0     0.0    0.0
-    toKey                Automata.DFA.MyDFA                                   349      152476   0.4    0.6     0.4    0.6
-    deleteState          Automata.DFA.MyDFA                                   348       42017   0.4    1.1     0.9    1.9
-     successors          Automata.DFA.MyDFA                                   365       34145   0.2    0.6     0.2    0.7
-      validTrans         Automata.DFA.MyDFA                                   367       34145   0.0    0.0     0.0    0.0
-      trans              Automata.DFA.MyDFA                                   366       34221   0.0    0.2     0.0    0.2
-       transitionMap     Automata.DFA.MyDFA                                   368       34221   0.0    0.0     0.0    0.0
-     validTrans          Automata.DFA.MyDFA                                   352       42017   0.2    0.0     0.2    0.0
-   findEquiv             Automata.DFA.MyDFA                                   343       39380   0.0    0.3    85.6   58.9
-    findEquivFrom        Automata.DFA.MyDFA                                   354       39380   3.7    0.5    84.7   58.5
-     checkEquiv          Automata.DFA.MyDFA                                   355     1135736   9.6   10.5    81.0   58.0
-      successors         Automata.DFA.MyDFA                                   359     1946736  31.7   36.9    55.9   47.5
-       validTrans        Automata.DFA.MyDFA                                   361     1946736   0.2    0.0     0.2    0.0
-       trans             Automata.DFA.MyDFA                                   360     2004360  24.0   10.6    24.0   10.6
-        transitionMap    Automata.DFA.MyDFA                                   363     2004360   0.0    0.0     0.0    0.0
-      isFinal            Automata.DFA.MyDFA                                   356     2271472  15.1    0.0    15.5    0.0
-       acceptKeys        Automata.DFA.MyDFA                                   357     2271472   0.4    0.0     0.4    0.0
-    predecessors         Automata.DFA.MyDFA                                   344       39380   0.7    0.1     0.9    0.2
-     invertMap           Automata.DFA.MyDFA                                   346       39380   0.0    0.0     0.0    0.0
-     toKey               Automata.DFA.MyDFA                                   345       39380   0.2    0.1     0.2    0.1
-   transitionMap         Automata.DFA.MyDFA                                   340       57830   0.0    0.0     0.0    0.0
-   toKey                 Automata.DFA.MyDFA                                   339      115650   0.4    0.2     0.4    0.2
-   transStar             Automata.DFA.MyDFA                                   336      111469   0.0    0.0     0.9    0.2
-    trans                Automata.DFA.MyDFA                                   337       91076   0.9    0.2     0.9    0.2
-     transitionMap       Automata.DFA.MyDFA                                   338       91076   0.0    0.0     0.0    0.0
-   final                 Automata.DFA.MyDFA                                   335       12119   0.0    0.0     0.0    0.0
-   commonPrefix          Automata.DFA.MyDFA                                   332      101076   0.4    2.0     0.4    2.0
-   statesOnPath          Automata.DFA.MyDFA                                   331       10000   0.2    1.3     0.4    1.4
-    trans                Automata.DFA.MyDFA                                   341       57811   0.2    0.1     0.2    0.1
-     transitionMap       Automata.DFA.MyDFA                                   342       57811   0.0    0.0     0.0    0.0
-   minimized             Automata.DFA.MyDFA                                   330       10000   0.0    0.2     0.0    0.2
+ main                    Main                                                 326           4   0.0    0.7   100.0  100.0
+  stateSize              Automata.DFA.MyDFA                                   375           1   0.2    0.2     0.2    0.2
+   transitionMap         Automata.DFA.MyDFA                                   376           1   0.0    0.0     0.0    0.0
+  buildDictionary        Automata.DFA.MyDFA                                   328       20001   4.1   18.9    99.8   99.1
+   acceptKeys            Automata.DFA.MyDFA                                   358      109726   0.0    0.0     0.0    0.0
+   validTrans            Automata.DFA.MyDFA                                   353       19999   0.0    0.0     0.0    0.0
+   invertMap             Automata.DFA.MyDFA                                   351      119976   0.0    0.0     0.0    0.0
+   redirectTransition    Automata.DFA.MyDFA                                   347       89728   6.9   15.6     7.1   18.1
+    transitionMap        Automata.DFA.MyDFA                                   369      179456   0.0    0.0     0.0    0.0
+    validTrans           Automata.DFA.MyDFA                                   364       84232   0.0    0.0     0.0    0.0
+    invertMap            Automata.DFA.MyDFA                                   350      179454   0.0    0.0     0.0    0.0
+    toKey                Automata.DFA.MyDFA                                   349      327522   0.0    0.6     0.0    0.6
+    deleteState          Automata.DFA.MyDFA                                   348       89728   0.2    1.1     0.2    1.9
+     successors          Automata.DFA.MyDFA                                   371       73843   0.0    0.6     0.0    0.8
+      validTrans         Automata.DFA.MyDFA                                   373       73843   0.0    0.0     0.0    0.0
+      trans              Automata.DFA.MyDFA                                   372       74033   0.0    0.2     0.0    0.2
+       transitionMap     Automata.DFA.MyDFA                                   374       74033   0.0    0.0     0.0    0.0
+     validTrans          Automata.DFA.MyDFA                                   352       89728   0.0    0.0     0.0    0.0
+   findEquiv             Automata.DFA.MyDFA                                   343       84232   0.0    0.3    86.9   58.0
+    findEquivFrom        Automata.DFA.MyDFA                                   354      252696   5.8    0.9    86.6   57.6
+     successors          Automata.DFA.MyDFA                                   361       84232   0.0    0.7     0.2    0.9
+      validTrans         Automata.DFA.MyDFA                                   363       84232   0.2    0.0     0.2    0.0
+      trans              Automata.DFA.MyDFA                                   362       89731   0.0    0.2     0.0    0.2
+       transitionMap     Automata.DFA.MyDFA                                   368       89731   0.0    0.0     0.0    0.0
+     isFinal             Automata.DFA.MyDFA                                   356       84232   0.0    0.0     0.0    0.0
+      acceptKeys         Automata.DFA.MyDFA                                   357       84232   0.0    0.0     0.0    0.0
+     checkEquiv          Automata.DFA.MyDFA                                   355     4273858   9.0    9.3    80.6   55.8
+      successors         Automata.DFA.MyDFA                                   365     3651330  34.1   37.1    56.5   46.5
+       validTrans        Automata.DFA.MyDFA                                   367     3651330   0.0    0.0     0.0    0.0
+       trans             Automata.DFA.MyDFA                                   366     3755047  21.9    9.4    22.4    9.4
+        transitionMap    Automata.DFA.MyDFA                                   370     3755047   0.5    0.0     0.5    0.0
+      isFinal            Automata.DFA.MyDFA                                   359     4273858  14.5    0.0    15.2    0.0
+       acceptKeys        Automata.DFA.MyDFA                                   360     4273858   0.7    0.0     0.7    0.0
+    predecessors         Automata.DFA.MyDFA                                   344       84232   0.2    0.1     0.2    0.2
+     invertMap           Automata.DFA.MyDFA                                   346       84232   0.0    0.0     0.0    0.0
+     toKey               Automata.DFA.MyDFA                                   345       84232   0.0    0.1     0.0    0.1
+   transitionMap         Automata.DFA.MyDFA                                   340      119987   0.0    0.0     0.0    0.0
+   toKey                 Automata.DFA.MyDFA                                   339      239963   0.2    0.2     0.2    0.2
+   transStar             Automata.DFA.MyDFA                                   336      236639   0.0    0.0     0.7    0.2
+    trans                Automata.DFA.MyDFA                                   337      195805   0.7    0.2     0.7    0.2
+     transitionMap       Automata.DFA.MyDFA                                   338      195805   0.0    0.0     0.0    0.0
+   final                 Automata.DFA.MyDFA                                   335       24107   0.0    0.0     0.0    0.0
+   commonPrefix          Automata.DFA.MyDFA                                   332      215805   0.0    2.0     0.0    2.0
+   statesOnPath          Automata.DFA.MyDFA                                   331       20000   0.2    1.2     0.7    1.4
+    trans                Automata.DFA.MyDFA                                   341      119965   0.5    0.1     0.5    0.1
+     transitionMap       Automata.DFA.MyDFA                                   342      119965   0.0    0.0     0.0    0.0
+   minimized             Automata.DFA.MyDFA                                   330       20000   0.0    0.2     0.0    0.2
     final                Automata.DFA.MyDFA                                   333           0   0.0    0.0     0.0    0.0
    fst3                  Automata.DFA.MyDFA                                   329           1   0.0    0.0     0.0    0.0
  CAF:main6               Main                                                 320           1   0.0    0.0     0.0    0.0
@@ -79,7 +84,7 @@ MAIN                     MAIN                                                   
  CAF                     GHC.Conc                                             240           1   0.0    0.0     0.0    0.0
  CAF                     GHC.IO.Handle.Internals                              231           1   0.0    0.0     0.0    0.0
  CAF                     GHC.IO.Encoding.Iconv                                225           6   0.0    0.0     0.0    0.0
- CAF:a_r4Oa              Automata.DFA.MyDFA                                   214           1   0.0    0.0     0.0    0.0
+ CAF:a_r4NS              Automata.DFA.MyDFA                                   214           1   0.0    0.0     0.0    0.0
  CAF:emptyDFA            Automata.DFA.MyDFA                                   213           1   0.0    0.0     0.0    0.0
   emptyDFA               Automata.DFA.MyDFA                                   334           1   0.0    0.0     0.0    0.0
  CAF                     System.Environment                                   164           2   0.0    0.0     0.0    0.0
