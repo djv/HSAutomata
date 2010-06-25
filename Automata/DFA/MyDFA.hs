@@ -29,14 +29,16 @@ import Data.Bits
 import Data.Char
 
 type StateLabel = Int
+type StateSet = Set.IntSet
+type FP = Int
 
 data MyDFA = MyDFA { transitionMap :: Map.IntMap StateLabel
-                                  , invertMap :: Map.IntMap [StateLabel]
+                                  , invertMap :: Map.IntMap StateSet
                                   , startKey :: StateLabel
                                   , final :: StateLabel
-                                  , transFP :: Map.IntMap [StateLabel]
+                                  , transFP :: Map.IntMap StateSet
                                   , validTrans :: Map.IntMap [Char]
-                                  , acceptKeys :: Set.IntSet
+                                  , acceptKeys :: StateSet
                                   } deriving (Show)
 
 emptyDFA = MyDFA Map.empty Map.empty 0 0 Map.empty Map.empty Set.empty
@@ -68,8 +70,23 @@ fst3 (x,_,_) = x
 alphabet = ['a'..'z']
 
 trans dfa n e = transitionMap dfa Map.! toKey (n,e) --toKey (n,e) `Map.lookup` (transitionMap dfa)
-successors s dfa = List.map (trans dfa s) $ Map.findWithDefault "" s (validTrans dfa)
+successors s dfa = List.map (trans dfa s) $ findValidTrans dfa s
 
+findValidTrans :: MyDFA -> StateLabel -> [Char]
+findValidTrans dfa s = Map.findWithDefault "" s (validTrans dfa)
+
+str2fp :: [Char] -> FP
+str2fp str = List.foldl' (\n c -> n `xor` bit c) 0 $ List.map char2bit str
+
+findFP dfa state = str2fp $ findValidTrans dfa state
+
+char2bit :: Char -> Int
+char2bit c = ord c - 97
+
+changeFP tfp s newFP oldFP = Map.insertWith Set.union newFP (Set.singleton s) $ deleteFP tfp s oldFP
+deleteFP tfp s fp = Map.adjust (Set.delete s) fp tfp
+
+isFinal :: StateLabel -> MyDFA -> Bool
 isFinal s dfa = s `Set.member` acceptKeys dfa
 
 checkEquiv :: MyDFA -> Bool -> [StateLabel] -> StateLabel -> Bool
@@ -82,26 +99,30 @@ transStar dfa pref = foldl' (\n e -> trans dfa n e) (startKey dfa) pref
 statesOnPath :: MyDFA -> StateLabel -> ByteString -> [StateLabel]
 statesOnPath dfa state str = List.scanl (\n e -> trans dfa n e) state (unpack str)
 
-predecessors :: MyDFA -> Char -> StateLabel -> [StateLabel]
+predecessors :: MyDFA -> Char -> StateLabel -> StateSet
 predecessors dfa c state = (invertMap dfa) Map.! toKey (state, c) --List.map fst $ Map.keys $ Map.filter (==state) $ transitionMap dfa
 
 findEquiv :: MyDFA -> StateLabel -> Char -> StateLabel -> Maybe StateLabel
-findEquiv dfa state c goingTo = findEquivFrom dfa state $ predecessors dfa c goingTo --if goingTo == final dfa then undefined else predecessors dfa c goingTo
+findEquiv dfa state c goingTo = findEquivFrom dfa state $ (preds `Set.intersection` sameFP) where
+    preds = predecessors dfa c goingTo
+    sameFP = Map.findWithDefault Set.empty (findFP dfa state) (transFP dfa)
 
-findEquivFrom :: MyDFA -> StateLabel -> [StateLabel] -> Maybe StateLabel
-findEquivFrom dfa state l = listToMaybe $ List.filter (/= state) $ List.filter (checkEquiv dfa (state `isFinal` dfa) (state `successors` dfa)) l
+findEquivFrom :: MyDFA -> StateLabel -> StateSet -> Maybe StateLabel
+findEquivFrom dfa state l = listToMaybe $ Set.toList $ Set.filter (/= state) $ Set.filter (checkEquiv dfa (state `isFinal` dfa) (state `successors` dfa)) l
 
 deleteState :: StateLabel -> MyDFA -> MyDFA 
-deleteState state dfa = dfa {transitionMap = updateTransition, invertMap = delFromInvert, validTrans = delFromValidTrans}
+deleteState state dfa = dfa {transitionMap = updateTransition, invertMap = delFromInvert, validTrans = delFromValidTrans, transFP = delFromTransFP}
     where succs = state `successors` dfa
-          succTrans = List.zipWith (flip (,)) (Map.findWithDefault "" state (validTrans dfa)) succs
+          trans = findValidTrans dfa state
+          succTrans = List.zipWith (flip (,)) trans succs
           updateTransition = List.foldl' (\t c -> Map.delete (toKey (state,c)) t) (transitionMap dfa) (List.map snd succTrans)
-          delFromInvert = List.foldl' (\t sc -> Map.adjust (List.delete state) (toKey sc) t) (invertMap dfa) succTrans
+          delFromInvert = List.foldl' (\t succPair -> Map.adjust (Set.delete state) (toKey succPair) t) (invertMap dfa) succTrans
           delFromValidTrans = Map.delete state (validTrans dfa)
+          delFromTransFP = deleteFP (transFP dfa) state (str2fp trans)
 
 insertTransition :: (StateLabel, Char, StateLabel) -> MyDFA -> MyDFA 
 insertTransition (s1,x,s2) dfa = dfa {transitionMap = Map.insert (toKey (s1,x)) s2 (transitionMap dfa)
-                                        , invertMap = Map.insertWith (++) (toKey (s2,x)) [s1] (invertMap dfa)}
+                                        , invertMap = Map.insertWith (Set.union) (toKey (s2,x)) (Set.singleton s1) (invertMap dfa)}
 
 redirectTransition dfa s1 x s2 to = insertTransition (s1,x,to) $ deleteState s2 dfa
 
@@ -127,10 +148,13 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
         --new state labels for the newSuffix path
         newStates = [newIndex .. newIndex + length newSuffix - 1]
         --insert newStates in minimized
-        insertNewStates = (List.foldl' (flip insertTransition) minimized $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal} {validTrans = updateValidTrans} where
+        insertNewStates = (List.foldl' (flip insertTransition) minimized $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal, validTrans = updateValidTrans, transFP = updateTransFP} where
             --mark last of newStates as final
             insertNewFinal = Set.insert (List.last newStates) (acceptKeys minimized)
-            updateValidTrans = List.foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) $ List.zip (branchPoint:List.init newStates) (unpack newSuffix)
+            updateValidTrans = List.foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) transitions
+            transitions :: [(StateLabel, Char)]
+            transitions = List.zip (branchPoint:List.init newStates) (unpack newSuffix)
+            updateTransFP = List.foldl' (\tfp (state,c) -> let oldFP = findFP dfa state in changeFP tfp state (oldFP `xor` bit (char2bit c)) oldFP) (transFP dfa) transitions
 
         --change final if it is on the new path
         newFinal = if null lastSuffix && final dfa == branchPoint then newIndex + length newSuffix - 1 else final dfa
