@@ -78,6 +78,17 @@ prop_notAccepts = do
     notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
     return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
 
+prop_acceptsTrie = do
+    inp <- genInpList
+    let dict = buildTrie $ map B.pack $ sort inp
+    return $ all (DMatcher.matches (myDFAToDFA dict)) inp
+
+prop_notAcceptsTrie = do
+    inp <- genInpList
+    let dict = buildTrie $ map B.pack $ sort inp
+    notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
+    return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
+
 prop_minStates = do
     inp <- genInpList
     let dictNum = MDFA.stateSize $ buildDictionary $ map B.pack $ inp
