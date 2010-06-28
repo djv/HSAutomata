@@ -48,13 +48,19 @@ data MyDFA = MyDFA { transitionMap :: Transitions State
 
 emptyDFA = MyDFA Map.empty Map.empty 0 0 Map.empty Map.empty Set.empty
 
+proccessQueue :: (Q.IQueue q) => (q,a) -> ((q,a) -> (q,a)) -> a
+proccessQueue (q,val) f | Q.null q = val
+                        | otherwise = proccessQueue (f (q,val)) f
+
 --determinize :: MyDFA -> Transitions State
-determinize dfa = foldl' step (emptyDFA, M.singleton start 0, 1) $ transSetAll (invertMap dfa) start where 
+determinize dfa = proccessQueue (Q.fromList $ transSetAll (invertMap dfa) start, (emptyDFA, M.singleton start 0, 1)) step where 
     start = acceptKeys dfa
-    step (dfa, visited, newIndex) (from, char, to) = case M.lookup to visited of
+    step :: Q.IQueue q => (q, (MyDFA, M.Map StateSet State, State)) -> (q, (MyDFA, M.Map StateSet State, State))
+    step (q, (dfa, visited, newIndex)) = case M.lookup to visited of
                                                        Nothing -> (insertTransition (visited M.! from, char, newIndex) (dfa {acceptKeys = newAccept}), M.insert to newIndex visited, newIndex + 1)
                                                        Just toLabel -> (insertTransition (visited M.! from, char, toLabel) dfa, visited, newIndex)
                                                        where newAccept = if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys dfa) else acceptKeys dfa
+                                                             (from, char, to) = fromJust $ Q.extract q
 
 transSetAll :: Transitions StateSet -> StateSet -> [(StateSet, Char, StateSet)]
 transSetAll t s = filter (not . Set.null . (\(_,_,s)->s)) $ zip3 (repeat s) alphabet (map (transSet t s) alphabet)
