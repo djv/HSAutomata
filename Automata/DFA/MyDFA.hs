@@ -22,14 +22,15 @@ import qualified Data.Map as M
 import qualified Data.IntMap as Map
 import qualified Data.Set as S
 import qualified Data.IntSet as Set
-import qualified Data.List as List
+import Data.List
 import Debug.Trace
 import Prelude hiding (drop, length, init, tail, scanl, reverse, last, map, null, zip, lines, readFile, take)
-import Data.ByteString.Char8
+import qualified Data.ByteString.Char8 as B
 import qualified Automata.DFA.Datatype as DFA
 import Data.Maybe
 import Data.Bits
 import Data.Char
+import qualified Data.Queue.Class as Q
 
 type State = Int
 type StateSet = Set.IntSet
@@ -48,7 +49,7 @@ data MyDFA = MyDFA { transitionMap :: Transitions State
 emptyDFA = MyDFA Map.empty Map.empty 0 0 Map.empty Map.empty Set.empty
 
 --determinize :: MyDFA -> Transitions State
-determinize dfa = List.foldl' step (emptyDFA, M.singleton start 0, 1) $ transSetAll (invertMap dfa) start where 
+determinize dfa = foldl' step (emptyDFA, M.singleton start 0, 1) $ transSetAll (invertMap dfa) start where 
     start = acceptKeys dfa
     step (dfa, visited, newIndex) (from, char, to) = case M.lookup to visited of
                                                        Nothing -> (insertTransition (visited M.! from, char, newIndex) (dfa {acceptKeys = newAccept}), M.insert to newIndex visited, newIndex + 1)
@@ -56,10 +57,10 @@ determinize dfa = List.foldl' step (emptyDFA, M.singleton start 0, 1) $ transSet
                                                        where newAccept = if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys dfa) else acceptKeys dfa
 
 transSetAll :: Transitions StateSet -> StateSet -> [(StateSet, Char, StateSet)]
-transSetAll t s = List.filter (not . Set.null . (\(_,_,s)->s)) $ List.zip3 (List.repeat s) alphabet (List.map (transSet t s) alphabet)
+transSetAll t s = filter (not . Set.null . (\(_,_,s)->s)) $ zip3 (repeat s) alphabet (map (transSet t s) alphabet)
 
 transSet :: Transitions StateSet -> StateSet -> Char -> StateSet
-transSet t s c = Set.unions $ catMaybes $ List.map (\k -> Map.lookup (toKey (k,c)) t) $ Set.toList s
+transSet t s c = Set.unions $ catMaybes $ map (\k -> Map.lookup (toKey (k,c)) t) $ Set.toList s
 
 myDFAToDFA dfa = DFA.DFA (transitionMapToFunction $ transitionMap dfa) (startKey dfa) (`Set.member` acceptKeys dfa)
     where transitionMapToFunction m s c = Map.lookup (toKey (s,c)) m
@@ -69,7 +70,7 @@ states dfa = Set.unions [keyStates, valueStates, Set.singleton $ startKey dfa]
     where keyStates = Set.map (fst . fromKey) (Map.keysSet $ transitionMap dfa)
           valueStates = Set.fromList (Map.elems $ transitionMap dfa)
 
-stateSize dfa = 1 + (List.length $ Map.keys $ transitionMap dfa)
+stateSize dfa = 1 + (length $ Map.keys $ transitionMap dfa)
 
 toKey :: (State, Char) -> Map.Key
 toKey (s, c) = s `shiftL` 8 + ord c
@@ -77,23 +78,23 @@ toKey (s, c) = s `shiftL` 8 + ord c
 fromKey :: Map.Key -> (State, Char)
 fromKey k = (k `shiftR` 8, chr $ k `mod` 2^8)
 
-commonPrefix xs ys | null xs || null ys = empty
-                   | otherwise = let (x, xs') = fromJust $ uncons xs
-                                     (y, ys') = fromJust $ uncons ys in
-                                        if x==y then cons x (commonPrefix xs' ys') else empty
+commonPrefix xs ys | B.null xs || B.null ys = B.empty
+                   | otherwise = let (x, xs') = fromJust $ B.uncons xs
+                                     (y, ys') = fromJust $ B.uncons ys in
+                                        if x==y then B.cons x (commonPrefix xs' ys') else B.empty
 
 fst3 (x,_,_) = x
 
 alphabet = ['a'..'z']
 
 trans dfa n e = transitionMap dfa Map.! toKey (n,e) --toKey (n,e) `Map.lookup` (transitionMap dfa)
-successors s dfa = List.map (trans dfa s) $ findValidTrans dfa s
+successors s dfa = map (trans dfa s) $ findValidTrans dfa s
 
 findValidTrans :: MyDFA -> State -> [Char]
 findValidTrans dfa s = Map.findWithDefault "" s (validTrans dfa)
 
 str2fp :: [Char] -> FP
-str2fp str = List.foldl' (\n c -> n `xor` bit c) 0 $ List.map char2bit str
+str2fp str = foldl' (\n c -> n `xor` bit c) 0 $ map char2bit str
 
 findFP dfa state = str2fp $ findValidTrans dfa state
 
@@ -109,12 +110,12 @@ isFinal s dfa = s `Set.member` acceptKeys dfa
 checkEquiv :: MyDFA -> Bool -> [State] -> State -> Bool
 checkEquiv dfa finality succs s2 = (finality == s2 `isFinal` dfa) && (succs == s2 `successors` dfa)
 
-transStar :: MyDFA -> ByteString -> State
-transStar dfa word = foldl' (\n e -> trans dfa n e) (startKey dfa) word
+transStar :: MyDFA -> B.ByteString -> State
+transStar dfa word = B.foldl' (\n e -> trans dfa n e) (startKey dfa) word
 
 --list of states in dfa starting from state by traversing str
-statesOnPath :: MyDFA -> State -> ByteString -> [State]
-statesOnPath dfa state str = List.scanl (\n e -> trans dfa n e) state (unpack str)
+statesOnPath :: MyDFA -> State -> B.ByteString -> [State]
+statesOnPath dfa state str = scanl (\n e -> trans dfa n e) state (B.unpack str)
 
 predecessors :: MyDFA -> Char -> State -> StateSet
 predecessors dfa c state = (invertMap dfa) Map.! toKey (state, c) --List.map fst $ Map.keys $ Map.filter (==state) $ transitionMap dfa
@@ -131,9 +132,9 @@ deleteState :: State -> MyDFA -> MyDFA
 deleteState state dfa = dfa {transitionMap = updateTransition, invertMap = delFromInvert, validTrans = delFromValidTrans, transFP = delFromTransFP}
     where succs = state `successors` dfa
           trans = findValidTrans dfa state
-          succTrans = List.zipWith (flip (,)) trans succs
-          updateTransition = List.foldl' (\t c -> Map.delete (toKey (state,c)) t) (transitionMap dfa) (List.map snd succTrans)
-          delFromInvert = List.foldl' (\t succPair -> Map.adjust (Set.delete state) (toKey succPair) t) (invertMap dfa) succTrans
+          succTrans = zipWith (flip (,)) trans succs
+          updateTransition = foldl' (\t c -> Map.delete (toKey (state,c)) t) (transitionMap dfa) (map snd succTrans)
+          delFromInvert = foldl' (\t succPair -> Map.adjust (Set.delete state) (toKey succPair) t) (invertMap dfa) succTrans
           delFromValidTrans = Map.delete state (validTrans dfa)
           delFromTransFP = deleteFP (transFP dfa) state (str2fp trans)
 
@@ -145,17 +146,17 @@ redirectTransition dfa s1 x s2 to = insertTransition (s1,x,to) $ deleteState s2 
 
 splitPrefix w1 w2 = (pref, w1suf, w2suf) where 
     pref = commonPrefix w1 w2
-    w1suf = drop (length pref) w1
-    w2suf = drop (length pref) w2
+    w1suf = B.drop (B.length pref) w1
+    w2suf = B.drop (B.length pref) w2
 
-buildDictionary :: [ByteString] -> MyDFA 
-buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
-    step :: (MyDFA , ByteString, Int) -> ByteString -> (MyDFA , ByteString, Int)
+buildDictionary :: [B.ByteString] -> MyDFA 
+buildDictionary l = fst3 $ foldl' step (emptyDFA, B.empty, 1) l where
+    step :: (MyDFA , B.ByteString, Int) -> B.ByteString -> (MyDFA , B.ByteString, Int)
     step (dfa, lastWord, newIndex) newWord
         | lastWord == newWord = (dfa, lastWord, newIndex)
-        | otherwise = (insertNewStates {final = newFinal}, newWord, newIndex + length newSuffix) where
+        | otherwise = (insertNewStates {final = newFinal}, newWord, newIndex + B.length newSuffix) where
 
-        minimized = {-# SCC "minimized" #-} fst $ List.foldl' walkBack (dfa, Just $ final dfa) $ List.reverse $ candidatesTransitions
+        minimized = {-# SCC "minimized" #-} fst $ foldl' walkBack (dfa, Just $ final dfa) $ reverse $ candidatesTransitions
 
         (pref, lastSuffix, newSuffix) = splitPrefix lastWord newWord
         branchPoint = transStar dfa pref
@@ -163,20 +164,20 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
         --states on the path on lastSuffix which could be minimized
         candidates = statesOnPath dfa branchPoint lastSuffix
         --transitions on the lastSuffix path
-        candidatesTransitions = List.zip3 (List.init candidates) (unpack lastSuffix) (List.tail candidates)
+        candidatesTransitions = zip3 (init candidates) (B.unpack lastSuffix) (tail candidates)
         --new state labels for the newSuffix path
-        newStates = [newIndex .. newIndex + length newSuffix - 1]
+        newStates = [newIndex .. newIndex + B.length newSuffix - 1]
         --insert newStates in minimized
-        insertNewStates = (List.foldl' (flip insertTransition) minimized $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal, validTrans = updateValidTrans, transFP = updateTransFP} where
+        insertNewStates = (foldl' (flip insertTransition) minimized $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal, validTrans = updateValidTrans, transFP = updateTransFP} where
             --mark last of newStates as final
-            insertNewFinal = Set.insert (List.last newStates) (acceptKeys minimized)
-            updateValidTrans = List.foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) transitions
+            insertNewFinal = Set.insert (last newStates) (acceptKeys minimized)
+            updateValidTrans = foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) transitions
             transitions :: [(State, Char)]
-            transitions = List.zip (branchPoint:List.init newStates) (unpack newSuffix)
-            updateTransFP = List.foldl' (\tfp (state,c) -> let oldFP = findFP dfa state in changeFP tfp state (oldFP `xor` bit (char2bit c)) oldFP) (transFP dfa) transitions
+            transitions = zip (branchPoint:init newStates) (B.unpack newSuffix)
+            updateTransFP = foldl' (\tfp (state,c) -> let oldFP = findFP dfa state in changeFP tfp state (oldFP `xor` bit (char2bit c)) oldFP) (transFP dfa) transitions
 
         --change final if it is on the new path
-        newFinal = if null lastSuffix && final dfa == branchPoint then newIndex + length newSuffix - 1 else final dfa
+        newFinal = if B.null lastSuffix && final dfa == branchPoint then newIndex + B.length newSuffix - 1 else final dfa
 
         walkBack :: (MyDFA , Maybe State) -> (State, Char, State) -> (MyDFA , Maybe State)
         walkBack (dfa, Nothing) _ = (dfa, Nothing)
@@ -187,22 +188,22 @@ buildDictionary l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
             redirect = redirectTransition dfa s1 x s2 cur_st
             newCur = findEquiv newDfa s1 x cur_st
 
-buildTrie :: [ByteString] -> MyDFA 
-buildTrie l = fst3 $ List.foldl' step (emptyDFA, empty, 1) l where
-    step :: (MyDFA , ByteString, Int) -> ByteString -> (MyDFA , ByteString, Int)
+buildTrie :: [B.ByteString] -> MyDFA 
+buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) l where
+    step :: (MyDFA , B.ByteString, Int) -> B.ByteString -> (MyDFA , B.ByteString, Int)
     step (dfa, lastWord, newIndex) newWord
         | lastWord == newWord = (dfa, lastWord, newIndex)
-        | otherwise = (insertNewStates, newWord, newIndex + length newSuffix) where
+        | otherwise = (insertNewStates, newWord, newIndex + B.length newSuffix) where
 
         (pref, lastSuffix, newSuffix) = splitPrefix lastWord newWord
         branchPoint = {-# SCC "branchpoint" #-} transStar dfa pref
 
         --new state labels for the newSuffix path
-        newStates = [newIndex .. newIndex + length newSuffix - 1]
+        newStates = [newIndex .. newIndex + B.length newSuffix - 1]
         --insert newStates in minimized
-        insertNewStates = (List.foldl' (flip insertTransition) dfa $ List.zip3 (branchPoint:List.init newStates) (unpack newSuffix) newStates) {acceptKeys = insertNewFinal, validTrans = updateValidTrans} where
+        insertNewStates = (foldl' (flip insertTransition) dfa $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal, validTrans = updateValidTrans} where
             --mark last of newStates as final
-            insertNewFinal = {-# SCC "insertNew:insertFinal" #-} Set.insert (List.last newStates) (acceptKeys dfa)
-            updateValidTrans = {-# SCC "insertNew:updateValid" #-} List.foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) transitions
+            insertNewFinal = {-# SCC "insertNew:insertFinal" #-} Set.insert (last newStates) (acceptKeys dfa)
+            updateValidTrans = {-# SCC "insertNew:updateValid" #-} foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) transitions
             transitions :: [(State, Char)]
-            transitions = {-# SCC "insertNew:transitions" #-} List.zip (branchPoint:List.init newStates) (unpack newSuffix)
+            transitions = {-# SCC "insertNew:transitions" #-} zip (branchPoint:init newStates) (B.unpack newSuffix)
