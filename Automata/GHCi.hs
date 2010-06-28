@@ -102,3 +102,4 @@ checkSize = do
         return $ map (uncurry (==) . first (stateSize . buildDictionary . (flip take) inp)) tests
 
 l = ["a","a","aaaaacb","aaaabab","aab","aabbacccbab","aaccaccbbaaa","ab","ab","abbaabbbbca","abbcaaacbcaab","abcaaa","abcaabcaba","abccb","acbaaa","acbcbbcbbc","acbccac","acccaccbcbb","accccaca","b","b","b","b","ba","baab","baabbbbcbccac","baabcabab","bababbacba","bbac","bbaca","bbba","bbbc","bbbcc","bbccb","bc","bcaa","bcacbaaabbca","bcbaaacbabaccacbcbcb","bcbacba","bcbbbcb","bcbcbaaabcbc","bccacabbacaa","c","caabbacbbbbc","caabbc","caabbcbaa","cab","cabaacabb","cabbabcccc","cabc","cacbbccbcaaaabacaa","cacca","cb","cbabbabbcb","cbacabbbaaa","cbacacacaacccabb","cbbbbaa","cbbc","cbbca","cc","ccab","ccacbbaa","ccbaccbbaab","ccbcaaabbbbcacc","ccc","ccc","cccacccaaaa"]
+t n = buildTrie $ map B.pack $ take n l

@@ -5,20 +5,22 @@
 module Automata.DFA.MyDFA (
       MyDFA(..)
     , myDFAToDFA
+    , determinize
     , fromKey
     , toKey
     , State
     , stateSize
     , states
+    , transSetAll
     , buildDictionary
     , buildTrie
 ) where
 
 import Control.Monad
 import Control.Arrow
-import qualified Data.Map
+import qualified Data.Map as M
 import qualified Data.IntMap as Map
-import qualified Data.Set
+import qualified Data.Set as S
 import qualified Data.IntSet as Set
 import qualified Data.List as List
 import Debug.Trace
@@ -35,18 +37,29 @@ type Transitions = Map.IntMap
 type FP = Int
 
 data MyDFA = MyDFA { transitionMap :: Transitions State
-                                  , invertMap :: Transitions StateSet
-                                  , startKey :: State
-                                  , final :: State
-                                  , transFP :: Map.IntMap StateSet
-                                  , validTrans :: Map.IntMap [Char]
-                                  , acceptKeys :: StateSet
-                                  } deriving (Show)
+                    , invertMap :: Transitions StateSet
+                    , startKey :: State
+                    , final :: State
+                    , transFP :: Map.IntMap StateSet
+                    , validTrans :: Map.IntMap [Char]
+                    , acceptKeys :: StateSet
+                    } deriving (Show)
 
 emptyDFA = MyDFA Map.empty Map.empty 0 0 Map.empty Map.empty Set.empty
 
-determinize :: Transitions StateSet -> Transitions State
-determinize trans = undefined
+--determinize :: MyDFA -> Transitions State
+determinize dfa = List.foldl' step (emptyDFA, M.singleton start 0, 1) $ transSetAll (invertMap dfa) start where 
+    start = acceptKeys dfa
+    step (dfa, visited, newIndex) (from, char, to) = case M.lookup to visited of
+                                                       Nothing -> (insertTransition (visited M.! from, char, newIndex) (dfa {acceptKeys = newAccept}), M.insert to newIndex visited, newIndex + 1)
+                                                       Just toLabel -> (insertTransition (visited M.! from, char, toLabel) dfa, visited, newIndex)
+                                                       where newAccept = if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys dfa) else acceptKeys dfa
+
+transSetAll :: Transitions StateSet -> StateSet -> [(StateSet, Char, StateSet)]
+transSetAll t s = List.filter (not . Set.null . (\(_,_,s)->s)) $ List.zip3 (List.repeat s) alphabet (List.map (transSet t s) alphabet)
+
+transSet :: Transitions StateSet -> StateSet -> Char -> StateSet
+transSet t s c = Set.unions $ catMaybes $ List.map (\k -> Map.lookup (toKey (k,c)) t) $ Set.toList s
 
 myDFAToDFA dfa = DFA.DFA (transitionMapToFunction $ transitionMap dfa) (startKey dfa) (`Set.member` acceptKeys dfa)
     where transitionMapToFunction m s c = Map.lookup (toKey (s,c)) m
