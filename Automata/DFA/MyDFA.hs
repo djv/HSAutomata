@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, ExistentialQuantification #-}
 
 -- | Functions and types modelling and working with DFAs.
 -- Based on dragon book p.150
@@ -31,11 +31,14 @@ import Data.Maybe
 import Data.Bits
 import Data.Char
 import qualified Data.Queue.Class as Q
+import qualified Data.Queue.Queue as QInst
 
 type State = Int
 type StateSet = Set.IntSet
 type Transitions = Map.IntMap
+type SetTransition = (StateSet, Char, StateSet)
 type FP = Int
+type Queue = QInst.Queue SetTransition
 
 data MyDFA = MyDFA { transitionMap :: Transitions State
                     , invertMap :: Transitions StateSet
@@ -53,16 +56,16 @@ proccessQueue (q,val) f | Q.null q = val
                         | otherwise = proccessQueue (f (q,val)) f
 
 --determinize :: MyDFA -> Transitions State
-determinize dfa = proccessQueue (Q.fromList $ transSetAll (invertMap dfa) start, (emptyDFA, M.singleton start 0, 1)) step where 
+determinize dfa = proccessQueue ((Q.fromList $ transSetAll (invertMap dfa) start) :: Queue, (emptyDFA, M.singleton start 0, 1)) step where 
     start = acceptKeys dfa
-    step :: Q.IQueue q => (q, (MyDFA, M.Map StateSet State, State)) -> (q, (MyDFA, M.Map StateSet State, State))
-    step (q, (dfa, visited, newIndex)) = case M.lookup to visited of
-                                                       Nothing -> (insertTransition (visited M.! from, char, newIndex) (dfa {acceptKeys = newAccept}), M.insert to newIndex visited, newIndex + 1)
-                                                       Just toLabel -> (insertTransition (visited M.! from, char, toLabel) dfa, visited, newIndex)
-                                                       where newAccept = if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys dfa) else acceptKeys dfa
-                                                             (from, char, to) = fromJust $ Q.extract q
+    step :: (Queue, (MyDFA, M.Map StateSet State, State)) -> (Queue, (MyDFA, M.Map StateSet State, State))
+    step (q, (det_dfa, visited, newIndex)) = case M.lookup to visited of
+                                                       Nothing -> (Q.insertAll (transSetAll (invertMap dfa) to) q', (insertTransition (visited M.! from, char, newIndex) (det_dfa {acceptKeys = newAccept}), M.insert to newIndex visited, newIndex + 1))
+                                                       Just toLabel -> (q', (insertTransition (visited M.! from, char, toLabel) det_dfa, visited, newIndex))
+                                                       where newAccept = if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys det_dfa) else acceptKeys det_dfa
+                                                             ((from, char, to), q') = fromJust $ Q.extract q
 
-transSetAll :: Transitions StateSet -> StateSet -> [(StateSet, Char, StateSet)]
+transSetAll :: Transitions StateSet -> StateSet -> [SetTransition]
 transSetAll t s = filter (not . Set.null . (\(_,_,s)->s)) $ zip3 (repeat s) alphabet (map (transSet t s) alphabet)
 
 transSet :: Transitions StateSet -> StateSet -> Char -> StateSet
@@ -195,12 +198,12 @@ buildDictionary l = fst3 $ foldl' step (emptyDFA, B.empty, 1) l where
             newCur = findEquiv newDfa s1 x cur_st
 
 buildTrie :: [B.ByteString] -> MyDFA 
-buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) l where
+buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) $ sort $ map B.reverse l where
     step :: (MyDFA , B.ByteString, Int) -> B.ByteString -> (MyDFA , B.ByteString, Int)
     step (dfa, lastWord, newIndex) newWord
         | lastWord == newWord = (dfa, lastWord, newIndex)
         | otherwise = (insertNewStates, newWord, newIndex + B.length newSuffix) where
-
+        
         (pref, lastSuffix, newSuffix) = splitPrefix lastWord newWord
         branchPoint = {-# SCC "branchpoint" #-} transStar dfa pref
 
