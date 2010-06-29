@@ -31,14 +31,14 @@ import Data.Maybe
 import Data.Bits
 import Data.Char
 import qualified Data.Queue.Class as Q
-import qualified Data.Queue.Queue as QInst
+import qualified Data.Queue.Stack as QInst
 
 type State = Int
 type StateSet = Set.IntSet
 type Transitions = Map.IntMap
 type SetTransition = (StateSet, Char, StateSet)
 type FP = Int
-type Queue = QInst.Queue SetTransition
+type Queue = QInst.Stack (State, (Char, StateSet))
 
 data MyDFA = MyDFA { transitionMap :: Transitions State
                     , invertMap :: Transitions StateSet
@@ -55,21 +55,31 @@ proccessQueue :: (Q.IQueue q) => (q,a) -> ((q,a) -> (q,a)) -> a
 proccessQueue (q,val) f | Q.null q = val
                         | otherwise = proccessQueue (f (q,val)) f
 
---determinize :: MyDFA -> Transitions State
-determinize dfa = proccessQueue ((Q.fromList $ transSetAll (invertMap dfa) start) :: Queue, (emptyDFA, M.singleton start 0, 1)) step where 
-    start = acceptKeys dfa
-    step :: (Queue, (MyDFA, M.Map StateSet State, State)) -> (Queue, (MyDFA, M.Map StateSet State, State))
-    step (q, (det_dfa, visited, newIndex)) = case M.lookup to visited of
-                                                       Nothing -> (Q.insertAll (transSetAll (invertMap dfa) to) q', (insertTransition (visited M.! from, char, newIndex) (det_dfa {acceptKeys = newAccept}), M.insert to newIndex visited, newIndex + 1))
-                                                       Just toLabel -> (q', (insertTransition (visited M.! from, char, toLabel) det_dfa, visited, newIndex))
-                                                       where newAccept = if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys det_dfa) else acceptKeys det_dfa
-                                                             ((from, char, to), q') = fromJust $ Q.extract q
+type Visited = (M.Map StateSet State, Map.IntMap State)
 
-transSetAll :: Transitions StateSet -> StateSet -> [SetTransition]
-transSetAll t s = filter (not . Set.null . (\(_,_,s)->s)) $ zip3 (repeat s) alphabet (map (transSet t s) alphabet)
+lookupVisited :: StateSet -> Visited -> Maybe State
+lookupVisited set (multi, single) | Set.size set == 1 = Map.lookup (Set.findMin set) single
+                                  | otherwise = M.lookup set multi
+
+insertVisited :: StateSet -> State -> Visited -> Visited
+insertVisited set index (multi, single) | Set.size set == 1 = (multi, Map.insert (Set.findMin set) index single)
+                                        | otherwise = (M.insert set index multi, single)
+
+determinize :: MyDFA -> (MyDFA, Visited, State)
+determinize dfa = proccessQueue ((Q.fromList $ zip (repeat 0) (transSetAll (invertMap dfa) start)) :: Queue, (emptyDFA, (M.singleton start 0, Map.empty), 1)) step where 
+    start = acceptKeys dfa
+    step :: (Queue, (MyDFA, Visited, State)) -> (Queue, (MyDFA, Visited, State))
+    step (q, (det_dfa, visited, newIndex)) = case {-# SCC "step:lookup_to" #-} lookupVisited to visited of
+                                                       Nothing -> {-# SCC "step:nothing" #-} ({-# SCC "step:q.insertall" #-} Q.insertAll (zip (repeat newIndex) (transSetAll (invertMap dfa) to)) q', ({-# SCC "step:inserttransition" #-} insertTransition (from, char, newIndex) (det_dfa {acceptKeys = newAccept}), {-# SCC "step:insertindex" #-} insertVisited to newIndex visited, newIndex + 1))
+                                                       Just toLabel -> {-# SCC "step:just" #-} (q', (insertTransition (from, char, toLabel) det_dfa, visited, newIndex))
+                                                       where newAccept = {-# SCC "step:newaccept" #-} if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys det_dfa) else acceptKeys det_dfa
+                                                             ((from, (char, to)), q') = {-# SCC "step:fct" #-} fromJust $ Q.extract q
+
+transSetAll :: Transitions StateSet -> StateSet -> [(Char, StateSet)]
+transSetAll t s = filter (not . Set.null . snd) $ zip alphabet (map (transSet t s) alphabet)
 
 transSet :: Transitions StateSet -> StateSet -> Char -> StateSet
-transSet t s c = Set.unions $ catMaybes $ map (\k -> Map.lookup (toKey (k,c)) t) $ Set.toList s
+transSet t s c = {-# SCC "unions" #-} Set.unions $ {-# SCC "catmaybes" #-} catMaybes $ {-# SCC "map" #-} map (\k -> {-# SCC "lookup" #-} Map.lookup (toKey (k,c)) t) $ {-# SCC "tolist" #-} Set.toList s
 
 myDFAToDFA dfa = DFA.DFA (transitionMapToFunction $ transitionMap dfa) (startKey dfa) (`Set.member` acceptKeys dfa)
     where transitionMapToFunction m s c = Map.lookup (toKey (s,c)) m
