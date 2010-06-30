@@ -13,6 +13,7 @@ import qualified Automata.DFA.MyDFA as MDFA
 import qualified Data.Set as Set
 import qualified Data.IntSet as ISet
 import qualified Data.Map as Map
+import qualified Data.IntMap as IMap
 
 import qualified Data.Graph.Inductive.Graphviz as SimpleGraphviz
 import Data.Graph.Inductive.Graph
@@ -42,7 +43,7 @@ toDotGraph dfa = graphToDot True
                             | otherwise = []
           edgeToAttr (from, to, label) = [Label (StrLabel (show label))]
 
-mtoGraphviz :: (Show a, Ord a) => MDFA.MyDFA StateLabel a -> String
+mtoGraphviz :: MDFA.MyDFA -> String
 mtoGraphviz = printDotGraph . mtoDotGraph
 
 mtoDotGraph dfa = graphToDot True 
@@ -59,14 +60,14 @@ mtoDotGraph dfa = graphToDot True
           edgeToAttr (from, to, label) = [Label (StrLabel (show label))]
 
 --fix type to fix ambiguity
-mmakeGraph :: (Show a, Ord a) => MDFA.MyDFA StateLabel a -> Gr StateLabel a 
+mmakeGraph :: MDFA.MyDFA -> Gr StateLabel Char
 mmakeGraph dfa = mkGraph (nodes dfa) (edges dfa)
-    where nodes dfa = [(a, a) | a <- Set.toList $ MDFA.states dfa]
-          edges dfa = Map.foldWithKey fn [] (MDFA.transitionMap dfa)
-            where fn (from, label) to accum = (from, to, label) : accum
+    where nodes dfa = [(a, a) | a <- ISet.toList $ MDFA.states dfa]
+          edges dfa = IMap.foldWithKey fn [] (MDFA.transitionMap dfa)
+            where fn k to accum = let (from, label) = MDFA.fromKey k in (from, to, label) : accum
 
 --fix type to fix ambiguity
-makeGraph :: (Show a, Ord a) => MapDFA StateLabel a -> Gr StateLabel a 
+makeGraph :: (Show a, Ord a) => MapDFA StateLabel a-> Gr StateLabel a 
 makeGraph dfa = mkGraph (nodes dfa) (edges dfa)
     where nodes dfa = [(a, a) | a <- Set.toList $ states dfa]
           edges dfa = Map.foldWithKey fn [] (transitionMap dfa)

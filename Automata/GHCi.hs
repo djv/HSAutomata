@@ -67,21 +67,28 @@ match r = NMatcher.matches (mapNFAToNFA (regularExpressionToNFA r))
 genInpList :: Gen [String]
 genInpList = listOf1 $ listOf1 $ choose ('a', 'c')
 
-prop_accepts = do
+prop_accepts f = do
     inp <- genInpList
-    let dict = buildDictionary $ map B.pack $ sort inp
+    let dict = f . map B.pack $ sort inp
     return $ all (DMatcher.matches (myDFAToDFA dict)) inp
 
-prop_notAccepts = do
+prop_notAccepts f = do
     inp <- genInpList
-    let dict = buildDictionary $ map B.pack $ sort inp
+    let dict = f . map B.pack $ sort inp
     notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
     return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
 
-prop_minStates = do
-    inp <- resize 10 $ genInpList
-    let dictNum = MDFA.stateSize $ buildDictionary $ map B.pack $ inp
-    let minNum = Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
-    return $ minNum == dictNum
+prop_minStates f = do
+    inp <- resize 20 $ genInpList
+    let dictNum = MDFA.stateSizeReal . f . map B.pack $ inp
+    let minNum = Set.size . DFA.states . minimize . mapNFAToMapDFA . trie $ inp
+    return $ (dictNum - minNum < 10)
+
+checkSize = do
+        inpStr <- B.readFile "test"
+        let inp = B.lines inpStr :: [B.ByteString]
+        let tests = [(500,1702), (5000,12709)]
+        return $ map (uncurry (==) . first (stateSize . buildDictionary . (flip take) inp)) tests
 
 l = ["a","a","aaaaacb","aaaabab","aab","aabbacccbab","aaccaccbbaaa","ab","ab","abbaabbbbca","abbcaaacbcaab","abcaaa","abcaabcaba","abccb","acbaaa","acbcbbcbbc","acbccac","acccaccbcbb","accccaca","b","b","b","b","ba","baab","baabbbbcbccac","baabcabab","bababbacba","bbac","bbaca","bbba","bbbc","bbbcc","bbccb","bc","bcaa","bcacbaaabbca","bcbaaacbabaccacbcbcb","bcbacba","bcbbbcb","bcbcbaaabcbc","bccacabbacaa","c","caabbacbbbbc","caabbc","caabbcbaa","cab","cabaacabb","cabbabcccc","cabc","cacbbccbcaaaabacaa","cacca","cb","cbabbabbcb","cbacabbbaaa","cbacacacaacccabb","cbbbbaa","cbbc","cbbca","cc","ccab","ccacbbaa","ccbaccbbaab","ccbcaaabbbbcacc","ccc","ccc","cccacccaaaa"]
+t n = buildTrie $ map B.pack $ take n l
