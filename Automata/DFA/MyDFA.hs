@@ -65,12 +65,12 @@ insertVisited :: StateSet -> State -> Visited -> Visited
 insertVisited set index (multi, single) | Set.size set == 1 = (multi, Map.insert (Set.findMin set) index single)
                                         | otherwise = (M.insert set index multi, single)
 
-determinize :: MyDFA -> (MyDFA, Visited, State)
-determinize dfa = proccessQueue ((Q.fromList $ zip (repeat 0) (transSetAll (invertMap dfa) start)) :: Queue, (emptyDFA, (M.singleton start 0, Map.empty), 1)) step where 
+determinize :: MyDFA -> (MyDFA, M.Map StateSet State, State)
+determinize dfa = proccessQueue ((Q.fromList $ zip (repeat 0) (transSetAll (invertMap dfa) start)) :: Queue, (emptyDFA, M.singleton start 0, 1)) step where 
     start = acceptKeys dfa
-    step :: (Queue, (MyDFA, Visited, State)) -> (Queue, (MyDFA, Visited, State))
-    step (q, (det_dfa, visited, newIndex)) = case {-# SCC "step:lookup_to" #-} lookupVisited to visited of
-                                                       Nothing -> {-# SCC "step:nothing" #-} ({-# SCC "step:q.insertall" #-} Q.insertAll (zip (repeat newIndex) (transSetAll (invertMap dfa) to)) q', ({-# SCC "step:inserttransition" #-} insertTransition (from, char, newIndex) (det_dfa {acceptKeys = newAccept}), {-# SCC "step:insertindex" #-} insertVisited to newIndex visited, newIndex + 1))
+    step :: (Queue, (MyDFA, M.Map StateSet State, State)) -> (Queue, (MyDFA, M.Map StateSet State, State))
+    step (q, (det_dfa, visited, newIndex)) = case {-# SCC "step:lookup_to" #-} M.lookup to visited of
+                                                       Nothing -> {-# SCC "step:nothing" #-} ({-# SCC "step:q.insertall" #-} Q.insertAll (zip (repeat newIndex) (transSetAll (invertMap dfa) to)) q', ({-# SCC "step:inserttransition" #-} insertTransition (from, char, newIndex) (det_dfa {acceptKeys = newAccept}), {-# SCC "step:insertindex" #-} M.insert to newIndex visited, newIndex + 1))
                                                        Just toLabel -> {-# SCC "step:just" #-} (q', (insertTransition (from, char, toLabel) det_dfa, visited, newIndex))
                                                        where newAccept = {-# SCC "step:newaccept" #-} if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys det_dfa) else acceptKeys det_dfa
                                                              ((from, (char, to)), q') = {-# SCC "step:fct" #-} fromJust $ Q.extract q
