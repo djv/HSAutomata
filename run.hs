@@ -11,4 +11,4 @@ main = do
     let inp = B.lines inpStr :: [B.ByteString]
     testSize <- liftM (read . (!!0)) $ getArgs :: IO Int
     --putStrLn $ show $ stateSize $ buildTrie $ take testSize inp
-    putStrLn . show . stateSize . (\(t,_,_) -> t) . determinize . buildTrie $ take testSize inp
+    putStrLn . show . stateSize . determinize . buildTrie $ take testSize inp
