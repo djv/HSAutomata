@@ -67,33 +67,22 @@ match r = NMatcher.matches (mapNFAToNFA (regularExpressionToNFA r))
 genInpList :: Gen [String]
 genInpList = listOf1 $ listOf1 $ choose ('a', 'c')
 
-prop_accepts = do
+prop_accepts f = do
     inp <- genInpList
-    let dict = buildDictionary $ map B.pack $ sort inp
+    let dict = f . map B.pack $ sort inp
     return $ all (DMatcher.matches (myDFAToDFA dict)) inp
 
-prop_notAccepts = do
+prop_notAccepts f = do
     inp <- genInpList
-    let dict = buildDictionary $ map B.pack $ sort inp
+    let dict = f . map B.pack $ sort inp
     notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
     return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
 
-prop_acceptsTrie = do
-    inp <- genInpList
-    let dict = buildTrie $ map B.pack $ sort inp
-    return $ all (DMatcher.matches (myDFAToDFA dict)) inp
-
-prop_notAcceptsTrie = do
-    inp <- genInpList
-    let dict = buildTrie $ map B.pack $ sort inp
-    notInp <- genInpList `suchThat` (Data.List.null . intersect inp)
-    return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
-
-prop_minStates = do
-    inp <- genInpList
-    let dictNum = MDFA.stateSize $ buildDictionary $ map B.pack $ inp
-    let minNum = Set.size $ DFA.states $ minimize $ mapNFAToMapDFA $ trie $ inp
-    return $ traceShow (minNum, dictNum) $ True--minNum == dictNum
+prop_minStates f = do
+    inp <- resize 20 $ genInpList
+    let dictNum = MDFA.stateSizeReal . f . map B.pack $ inp
+    let minNum = Set.size . DFA.states . minimize . mapNFAToMapDFA . trie $ inp
+    return $ (dictNum - minNum < 10)
 
 checkSize = do
         inpStr <- B.readFile "test"
