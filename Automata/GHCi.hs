@@ -79,10 +79,10 @@ prop_notAccepts f = do
     return $ not $ Data.List.any (DMatcher.matches $ myDFAToDFA dict) notInp
 
 prop_minStates f = do
-    inp <- resize 20 $ genInpList
+    inp <- resize 15 $ genInpList
     let dictNum = MDFA.stateSizeReal . f . map B.pack $ inp
     let minNum = Set.size . DFA.states . minimize . mapNFAToMapDFA . trie $ inp
-    return $ (dictNum - minNum < 10)
+    return $ dictNum == minNum
 
 checkSize = do
         inpStr <- B.readFile "test"

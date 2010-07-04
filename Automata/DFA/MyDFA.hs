@@ -67,16 +67,15 @@ insertVisited set index (multi, single) | Set.size set == 1 = (multi, Map.insert
                                         | otherwise = (M.insert set index multi, single)
 
 determinize :: MyDFA -> MyDFA
-determinize dfa = fst3 $ determinize' dfa
+determinize dfa = fst3 $ determinize' (invertMap dfa) (acceptKeys dfa) (startKey dfa)
 
-determinize' :: MyDFA -> (MyDFA, Visited, State)
-determinize' dfa = proccessQueue ((Q.fromList $ zip (repeat 0) (transSetAll (invertMap dfa) start)) :: Queue, (emptyDFA, (M.singleton start 0, Map.empty), 1)) step where 
-    start = acceptKeys dfa
+determinize' :: Transitions StateSet -> StateSet -> State -> (MyDFA, Visited, State)
+determinize' transMap start final = proccessQueue ((Q.fromList $ zip (repeat 0) (transSetAll transMap start)) :: Queue, (emptyDFA, (M.singleton start 0, Map.empty), 1)) step where 
     step :: (Queue, (MyDFA, Visited, State)) -> (Queue, (MyDFA, Visited, State))
     step (q, (det_dfa, visited, newIndex)) = case {-# SCC "step:lookup_to" #-} lookupVisited to visited of
-                                                       Nothing -> {-# SCC "step:nothing" #-} ({-# SCC "step:q.insertall" #-} Q.insertAll (zip (repeat newIndex) (transSetAll (invertMap dfa) to)) q', ({-# SCC "step:inserttransition" #-} insertTransition (from, char, newIndex) (det_dfa {acceptKeys = newAccept}), {-# SCC "step:insertindex" #-} insertVisited to newIndex visited, newIndex + 1))
+                                                       Nothing -> {-# SCC "step:nothing" #-} ({-# SCC "step:q.insertall" #-} Q.insertAll (zip (repeat newIndex) (transSetAll transMap to)) q', ({-# SCC "step:inserttransition" #-} insertTransition (from, char, newIndex) (det_dfa {acceptKeys = newAccept}), {-# SCC "step:insertindex" #-} insertVisited to newIndex visited, newIndex + 1))
                                                        Just toLabel -> {-# SCC "step:just" #-} (q', (insertTransition (from, char, toLabel) det_dfa, visited, newIndex))
-                                                       where newAccept = {-# SCC "step:newaccept" #-} if startKey dfa `Set.member` to then Set.insert newIndex (acceptKeys det_dfa) else acceptKeys det_dfa
+                                                       where newAccept = {-# SCC "step:newaccept" #-} if final `Set.member` to then Set.insert newIndex (acceptKeys det_dfa) else acceptKeys det_dfa
                                                              ((from, (char, to)), q') = {-# SCC "step:fct" #-} fromJust $ Q.extract q
 
 transSetAll :: Transitions StateSet -> StateSet -> [(Char, StateSet)]
@@ -225,9 +224,8 @@ buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) $ sort $ map B.reverse l
         --new state labels for the newSuffix path
         newStates = [newIndex .. newIndex + B.length newSuffix - 1]
         --insert newStates in minimized
-        insertNewStates = (foldl' (flip insertTransition) dfa $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal, validTrans = updateValidTrans} where
+        insertNewStates = (foldl' (flip insertTransition) dfa $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal} where
             --mark last of newStates as final
             insertNewFinal = {-# SCC "insertNew:insertFinal" #-} Set.insert (last newStates) (acceptKeys dfa)
-            updateValidTrans = {-# SCC "insertNew:updateValid" #-} foldl' (\v (s,c) -> Map.insertWith (++) s [c] v) (validTrans dfa) transitions
             transitions :: [(State, Char)]
             transitions = {-# SCC "insertNew:transitions" #-} zip (branchPoint:init newStates) (B.unpack newSuffix)
