@@ -5,9 +5,9 @@ import Data.Set
 import System.Environment
 import Control.Monad
 import qualified Data.ByteString.Char8 as B
---import Test.BenchPress
+import Test.BenchPress
 
-main = --bench 20 $
+main = bench 4 $
     do
     inpStr <- B.readFile =<< (liftM (!!1) $ getArgs)
     let inp = B.lines inpStr :: [B.ByteString]

@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, ExistentialQuantification #-}
+{-# LANGUAGE TupleSections, ExistentialQuantification, BangPatterns #-}
 
 -- | Functions and types modelling and working with DFAs.
 -- Based on dragon book p.150
@@ -214,7 +214,7 @@ buildDictionary l = fst3 $ foldl' step (emptyDFA, B.empty, 1) l where
 buildTrie :: [B.ByteString] -> MyDFA 
 buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) $ sort $ map B.reverse l where
     step :: (MyDFA , B.ByteString, Int) -> B.ByteString -> (MyDFA , B.ByteString, Int)
-    step (dfa, lastWord, newIndex) newWord
+    step (!dfa, !lastWord, !newIndex) newWord
         | lastWord == newWord = (dfa, lastWord, newIndex)
         | otherwise = (insertNewStates, newWord, newIndex + B.length newSuffix) where
         
@@ -223,9 +223,7 @@ buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) $ sort $ map B.reverse l
 
         --new state labels for the newSuffix path
         newStates = [newIndex .. newIndex + B.length newSuffix - 1]
-        --insert newStates in minimized
+        --insert newStates
         insertNewStates = (foldl' (flip insertTransition) dfa $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal} where
             --mark last of newStates as final
             insertNewFinal = {-# SCC "insertNew:insertFinal" #-} Set.insert (last newStates) (acceptKeys dfa)
-            transitions :: [(State, Char)]
-            transitions = {-# SCC "insertNew:transitions" #-} zip (branchPoint:init newStates) (B.unpack newSuffix)
