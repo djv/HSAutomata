@@ -5,11 +5,11 @@ import Data.Set
 import System.Environment
 import Control.Monad
 import qualified Data.ByteString.Char8 as B
-import Test.BenchPress
+--import Test.BenchPress
 
-main = bench 4 $
+main = --bench 5 $
     do
-    inpStr <- B.readFile =<< (liftM (!!1) $ getArgs)
+    inpStr <- B.getContents
     let inp = B.lines inpStr :: [B.ByteString]
     testSize <- liftM (read . (!!0)) $ getArgs :: IO Int
     --putStrLn . show . stateSizeReal . determinize . buildTrie $ take testSize inp
