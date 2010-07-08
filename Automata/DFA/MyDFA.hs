@@ -169,6 +169,12 @@ insertTransition :: MyDFA -> (State, Char, State) -> MyDFA
 insertTransition !dfa (!s1,!x,!s2) = dfa {transitionMap = Map.insert (toKey (s1,x)) s2 $! (transitionMap dfa)
                                         , invertMap = Map.insertWith (Set.union) (toKey (s2,x)) (Set.singleton s1) $! (invertMap dfa)}
 
+insertForwardTransition :: MyDFA -> (State, Char, State) -> MyDFA 
+insertForwardTransition !dfa (!s1,!x,!s2) = dfa {transitionMap = Map.insert (toKey (s1,x)) s2 $! (transitionMap dfa)}
+
+insertBackwardTransition :: MyDFA -> (State, Char, State) -> MyDFA 
+insertBackwardTransition !dfa (!s1,!x,!s2) = dfa {invertMap = Map.insertWith (Set.union) (toKey (s2,x)) (Set.singleton s1) $! (invertMap dfa)}
+
 redirectTransition dfa s1 x s2 to = insertTransition (deleteState s2 dfa) (s1,x,to)
 
 splitPrefix w1 w2 = (pref, w1suf, w2suf) where 
