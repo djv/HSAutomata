@@ -13,4 +13,6 @@ main = --bench 5 $
     let inp = B.lines inpStr :: [B.ByteString]
     testSize <- liftM (read . (!!0)) $ getArgs :: IO Int
     --putStrLn . show . stateSizeReal . determinize . buildTrie $ take testSize inp
-    (stateSize . determinize . buildTrie $ take testSize inp) `seq` return ()
+    putStrLn $ show $ length $ matchRegex (determinize . buildTrie $ take testSize inp) (Concat [Star anySym, Symbol 'a', Symbol 'b', Symbol 'c', Star anySym])
+
+anySym = Sum [Symbol 'a', Symbol 'b', Symbol 'c']

@@ -4,6 +4,8 @@
 -- Based on dragon book p.150
 module Automata.DFA.MyDFA (
       MyDFA(..)
+    , Regex(..)
+    , matchRegex
     , myDFAToDFA
     , determinize
     , fromKey
@@ -110,7 +112,9 @@ fst3 (x,_,_) = x
 
 alphabet = ['a'..'z']
 
-trans dfa n e = transitionMap dfa Map.! toKey (n,e) --toKey (n,e) `Map.lookup` (transitionMap dfa)
+tr dfa st c =  toKey (st,c) `Map.lookup` (transitionMap dfa)
+
+trans dfa n e = transitionMap dfa Map.! toKey (n,e)
 successors s dfa = map (trans dfa s) $ findValidTrans dfa s
 
 findValidTrans :: MyDFA -> State -> [Char]
@@ -227,3 +231,20 @@ buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) $ sort $ map B.reverse l
         insertNewStates = (foldl' insertTransition dfa $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal} where
             --mark last of newStates as final
             insertNewFinal = Set.insert (last newStates) (acceptKeys dfa)
+
+data Regex a = Null | Empty | Symbol a | Sum [Regex a] | Concat [Regex a] | Star (Regex a)
+    deriving (Eq, Ord, Show)
+
+matchRegex :: MyDFA -> Regex Char -> [String]
+matchRegex dfa regex = map snd $ filter ((`isFinal` dfa) . fst) $ match' dfa (startKey dfa) "" regex where
+    match' :: MyDFA -> State -> String -> Regex Char -> [(State, String)]
+    match' _ _ _ Null = []
+    match' dfa state str Empty = [(state, str)]
+    match' dfa state str (Symbol c) = case tr dfa state c of
+                                          Nothing -> []
+                                          Just st2 -> match' dfa st2 (str ++ [c]) Empty
+    match' dfa state str (Sum rs) = concatMap (match' dfa state str) rs
+    match' dfa state str (Concat []) = match' dfa state str Empty
+    match' dfa state str (Concat (r:rs)) = concatMap (\(state', str') -> match' dfa state' str' (Concat rs)) res where
+        res = match' dfa state str r
+    match' dfa state str (Star r) = match' dfa state str (Sum [Empty, Concat [r, Star r]])
