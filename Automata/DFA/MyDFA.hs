@@ -35,7 +35,8 @@ import Data.Maybe
 import Data.Bits
 import Data.Char
 import qualified Data.Queue.Class as Q
-import qualified Data.Queue.Stack as QInst
+import qualified Data.Queue.Stack as QS
+import qualified Data.Queue.Queue as QQ
 import Language.GroteTrap
 
 type State = Int
@@ -43,15 +44,15 @@ type StateSet = Set.IntSet
 type Transitions = Map.IntMap
 type SetTransition = (StateSet, Char, StateSet)
 type FP = Int
-type Queue = QInst.Stack (State, (Char, StateSet))
+type Queue = QQ.Queue (State, (Char, StateSet))
 
-data MyDFA = MyDFA { transitionMap :: Transitions State
-                    , invertMap :: Transitions StateSet
-                    , startKey :: State
+data MyDFA = MyDFA { transitionMap :: !(Transitions State)
+                    , invertMap :: !(Transitions StateSet)
+                    , startKey :: !State
                     , final :: State
                     , transFP :: Map.IntMap StateSet
                     , validTrans :: Map.IntMap [Char]
-                    , acceptKeys :: StateSet
+                    , acceptKeys :: !StateSet
                     } deriving (Show)
 
 emptyDFA = MyDFA Map.empty Map.empty 0 0 Map.empty Map.empty Set.empty
@@ -63,11 +64,11 @@ proccessQueue (q,val) f | Q.null q = val
 type Visited = (M.Map StateSet State, Map.IntMap State)
 
 lookupVisited :: StateSet -> Visited -> Maybe State
-lookupVisited set (multi, single) | Set.size set == 1 = Map.lookup (Set.findMin set) single
+lookupVisited !set (!multi, !single) | Set.size set == 1 = Map.lookup (Set.findMin set) single
                                   | otherwise = M.lookup set multi
 
 insertVisited :: StateSet -> State -> Visited -> Visited
-insertVisited set index (multi, single) | Set.size set == 1 = (multi, Map.insert (Set.findMin set) index single)
+insertVisited !set !index (!multi, !single) | Set.size set == 1 = (multi, Map.insert (Set.findMin set) index single)
                                         | otherwise = (M.insert set index multi, single)
 
 determinize :: MyDFA -> MyDFA
