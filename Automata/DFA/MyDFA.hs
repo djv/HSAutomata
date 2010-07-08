@@ -111,6 +111,7 @@ commonPrefix xs ys | B.null xs || B.null ys = B.empty
                                         if x==y then B.cons x (commonPrefix xs' ys') else B.empty
 
 fst3 (x,_,_) = x
+fst4 (x,_,_,_) = x
 
 alphabet = ['a'..'z']
 
@@ -224,19 +225,20 @@ buildDictionary l = fst3 $ foldl' step (emptyDFA, B.empty, 1) l where
             newCur = findEquiv newDfa s1 x cur_st
 
 buildTrie :: [B.ByteString] -> MyDFA 
-buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) $ sort $ map B.reverse l where
-    step :: (MyDFA , B.ByteString, Int) -> B.ByteString -> (MyDFA , B.ByteString, Int)
-    step (!dfa, !lastWord, !newIndex) newWord
-        | lastWord == newWord = (dfa, lastWord, newIndex)
-        | otherwise = (insertNewStates, newWord, newIndex + B.length newSuffix) where
+buildTrie l = fst4 $ foldl' step (emptyDFA, B.empty, [0], 1) $ sort $ map B.reverse l where
+    step :: (MyDFA , B.ByteString, [State], Int) -> B.ByteString -> (MyDFA , B.ByteString, [State], Int)
+    step (!dfa, !lastWord, !lastStates, !newIndex) newWord
+        | lastWord == newWord = (dfa, lastWord, lastStates, newIndex)
+        | otherwise = (insertNewStates, newWord, commonStates ++ newStates, newIndex + B.length newSuffix) where
         
         (pref, lastSuffix, newSuffix) = splitPrefix lastWord newWord
-        branchPoint = transStar dfa pref
+        commonStates = take (B.length pref + 1) lastStates
+        branchPoint = last commonStates
 
         --new state labels for the newSuffix path
         newStates = [newIndex .. newIndex + B.length newSuffix - 1]
         --insert newStates
-        insertNewStates = (foldl' insertTransition dfa $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal} where
+        insertNewStates = (foldl' insertBackwardTransition dfa $ zip3 (branchPoint:init newStates) (B.unpack newSuffix) newStates) {acceptKeys = insertNewFinal} where
             --mark last of newStates as final
             insertNewFinal = Set.insert (last newStates) (acceptKeys dfa)
 
