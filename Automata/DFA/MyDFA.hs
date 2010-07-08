@@ -75,8 +75,8 @@ determinize' :: Transitions StateSet -> StateSet -> State -> (MyDFA, Visited, St
 determinize' transMap start final = proccessQueue ((Q.fromList $ zip (repeat 0) (transSetAll transMap start)) :: Queue, (emptyDFA, (M.singleton start 0, Map.empty), 1)) step where 
     step :: (Queue, (MyDFA, Visited, State)) -> (Queue, (MyDFA, Visited, State))
     step (!q, (!det_dfa, !visited, !newIndex)) = case lookupVisited to visited of
-                                                       Nothing -> (Q.insertAll (zip (repeat newIndex) (transSetAll transMap to)) q', (insertTransition (det_dfa {acceptKeys = newAccept}) (from, char, newIndex), insertVisited to newIndex visited, newIndex + 1))
-                                                       Just toLabel -> (q', (insertTransition det_dfa (from, char, toLabel), visited, newIndex))
+                                                       Nothing -> (Q.insertAll (zip (repeat newIndex) (transSetAll transMap to)) q', (insertForwardTransition (det_dfa {acceptKeys = newAccept}) (from, char, newIndex), insertVisited to newIndex visited, newIndex + 1))
+                                                       Just toLabel -> (q', (insertForwardTransition det_dfa (from, char, toLabel), visited, newIndex))
                                                        where newAccept = if final `Set.member` to then Set.insert newIndex (acceptKeys det_dfa) else acceptKeys det_dfa
                                                              ((from, (char, to)), q') = fromJust $ Q.extract q
 
