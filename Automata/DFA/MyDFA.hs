@@ -17,6 +17,7 @@ module Automata.DFA.MyDFA (
     , transSetAll
     , buildDictionary
     , buildTrie
+    , parseRegex
 ) where
 
 import Control.Monad
@@ -35,6 +36,7 @@ import Data.Bits
 import Data.Char
 import qualified Data.Queue.Class as Q
 import qualified Data.Queue.Stack as QInst
+import Language.GroteTrap
 
 type State = Int
 type StateSet = Set.IntSet
@@ -240,6 +242,22 @@ buildTrie l = fst3 $ foldl' step (emptyDFA, B.empty, 1) $ sort $ map B.reverse l
 
 data Regex a = Null | Empty | Symbol a | Sum [Regex a] | Concat [Regex a] | Star (Regex a)
     deriving (Eq, Ord, Show)
+
+regexLanguage :: Language (Regex Char)
+regexLanguage = language
+    { variable = Symbol . head
+    , number = (\x -> case x of
+                            0 -> Null
+                            1 -> Empty
+                            otherwise -> Sum $ map Symbol alphabet)
+    , operators =
+        [ Unary Star    Postfix 0 "*"
+        , Assoc Concat          1 "."
+        , Assoc Sum             2 "+"
+        ]
+    }
+
+parseRegex = readExpression regexLanguage
 
 matchRegex :: MyDFA -> Regex Char -> [String]
 matchRegex dfa regex = map snd $ filter ((`isFinal` dfa) . fst) $ match' dfa (startKey dfa) "" regex where
